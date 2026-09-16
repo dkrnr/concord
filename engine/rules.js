@@ -1,6 +1,7 @@
 import { applyEventToDevices } from './reducer.js';
 import { store, nextId, APARTMENT, localDateString, localTimeString, pushFeed } from './state.js';
 import { SAFETY_RULE_IDS } from './seedState.js';
+import { isGrantActiveAt } from './grants.js';
 
 function resolvePath(obj, path) {
   return path.split('.').reduce((acc, key) => (acc == null ? undefined : acc[key]), obj);
@@ -105,15 +106,8 @@ export function applyRule(rule, triggerEvent) {
 }
 
 function hasActiveGrantForUnlock(now = new Date()) {
-  return store.grants.some((g) => {
-    if (g.apartmentId !== APARTMENT) return false;
-    if (!g.scope.includes('lock.unlock')) return false;
-    const from = new Date(g.validFrom), until = new Date(g.validUntil);
-    if (now < from || now > until) return false;
-    if (!g.recurring) return true;
-    const day = now.toLocaleDateString('en-US', { timeZone: 'Asia/Colombo', weekday: 'short' }).slice(0, 3).toLowerCase();
-    return g.recurring.days.includes(day);
-  });
+  return store.grants.some((g) =>
+    g.apartmentId === APARTMENT && g.scope.includes('lock.unlock') && isGrantActiveAt(g, now));
 }
 
 // Unexpected access while the apartment is empty, with no valid grant covering it.

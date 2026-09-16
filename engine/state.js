@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { APARTMENT, BUILDING_TZ, seedDevices, seedRules } from './seedState.js';
+import { seedPortfolio } from './seedPortfolio.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rawSeedEvents = JSON.parse(readFileSync(join(__dirname, 'seed-events.json'), 'utf8'));
@@ -21,6 +22,8 @@ export const store = {
   eventQueue: [], // remaining seeded events, fired one at a time
   notTonight: new Map(), // ruleId -> building-local date string ('YYYY-MM-DD')
   requestCache: new Map(), // requestId -> response (idempotency)
+  readNotifications: new Set(), // ids of WhyCards/SosEvents marked read (projection state only)
+  portfolio: [], // seeded building-level mock data, independent of the apt_401 device pipeline
 };
 
 export function reset() {
@@ -34,6 +37,8 @@ export function reset() {
   store.eventQueue = rawSeedEvents.map((e) => ({ ...e }));
   store.notTonight = new Map();
   store.requestCache = new Map();
+  store.readNotifications = new Set();
+  store.portfolio = seedPortfolio();
 }
 
 reset();

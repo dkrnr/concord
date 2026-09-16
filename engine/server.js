@@ -3,6 +3,7 @@ import { store, reset, nextId, APARTMENT, localDateString, pushFeed } from './st
 import { checkConflict, fireEvent, runActions } from './rules.js';
 import { SAFETY_RULE_IDS } from './seedState.js';
 import { sentenceToRule } from './llm.js';
+import { validateGrant, isGrantActiveAt } from './grants.js';
 
 const FEED_BATCH_LIMIT = 100;
 
@@ -171,13 +172,16 @@ const routes = {
 
   async '/createGrant'(body) {
     const { grant, requestId } = body;
-    if (!grant || !grant.apartmentId || !grant.role || !grant.actor || !grant.validFrom || !grant.validUntil) {
-      return { status: 400, body: { code: 'VALIDATION', message: 'grant requires apartmentId, actor, role, validFrom, validUntil.', retryable: false } };
+    if (!grant) return { status: 400, body: { code: 'VALIDATION', message: 'grant is required.', retryable: false } };
+    const fieldErrors = validateGrant(grant);
+    if (fieldErrors) {
+      return { status: 400, body: { code: 'VALIDATION', message: 'Grant has invalid or missing fields.', retryable: false, fieldErrors } };
     }
     if (requestId && store.requestCache.has(requestId)) return { status: 200, body: store.requestCache.get(requestId) };
     // Handover: honor the apartment and owner/tenant actor from the request -- never
-    // force the demo apartment. Lease dates (validFrom/validUntil) come from the caller
-    // and the grant auto-expires at validUntil (checked at use time, e.g. hasActiveGrantForUnlock).
+    // force the demo apartment. Lease dates (validFrom/validUntil), and the full
+    // recurring days/startTime/endTime window, are honored as given and checked
+    // at use time (isGrantActiveAt), not just as an hour-duration preset.
     const saved = { ...grant, id: nextId('grant') };
     store.grants = [saved, ...store.grants];
     if (requestId) store.requestCache.set(requestId, saved);
@@ -261,6 +265,83 @@ const routes = {
     const result = { ...card };
     if (requestId) store.requestCache.set(requestId, result);
     return { status: 200, body: result };
+  },
+
+  // Notifications: projected from existing WhyCards + SosEvents, no new persisted
+  // entity. 'read' state is engine-side bookkeeping keyed by the underlying id.
+  async '/fetchNotifications'(body) {
+    const apartmentId = body.apartmentId ?? APARTMENT;
+    const fromCards = store.whyCards
+      .filter((c) => c.apartmentId === apartmentId)
+      .map((c) => ({
+        id: c.id, apartmentId: c.apartmentId, kind: 'why_card',
+        severity: c.status === 'alert' ? 'alert' : 'info',
+        title: c.action, message: c.reason, timestamp: c.timestamp,
+        read: store.readNotifications.has(c.id),
+      }));
+    const fromSos = store.sosEvents
+      .filter((s) => s.apartmentId === apartmentId)
+      .map((s) => ({
+        id: s.id, apartmentId: s.apartmentId, kind: 'sos_event',
+        severity: 'alert',
+        title: s.type === 'manual' ? 'SOS triggered' : `SOS: ${s.type.replace('_', ' ')}`,
+        message: `Escalated to ${s.escalatedTo}. Status: ${s.status}.`, timestamp: s.timestamp,
+        read: store.readNotifications.has(s.id),
+      }));
+    const items = [...fromCards, ...fromSos].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    return { status: 200, body: items };
+  },
+
+  async '/markNotificationRead'(body) {
+    const { notificationId } = body;
+    if (!notificationId) return { status: 400, body: { code: 'VALIDATION', message: 'notificationId is required.', retryable: false } };
+    const exists = store.whyCards.some((c) => c.id === notificationId) || store.sosEvents.some((s) => s.id === notificationId);
+    if (!exists) return { status: 404, body: { code: 'VALIDATION', message: 'No such notification.', retryable: false } };
+    store.readNotifications.add(notificationId);
+    return { status: 200, body: { id: notificationId, read: true } };
+  },
+
+  // Portfolio/developer overview: aggregates the explicitly seeded building
+  // dataset (engine/seedPortfolio.js). Never derived from apt_401 device state.
+  async '/fetchPortfolio'() {
+    const units = store.portfolio;
+    const fleetHealth = { healthy: 0, attention: 0, anomaly: 0 };
+    let maintenanceOpen = 0, maintenanceHighPriority = 0, energyKwhToday = 0;
+    const handover = { occupied: 0, vacant: 0, pending_handover: 0 };
+    for (const u of units) {
+      fleetHealth[u.fleetHealth]++;
+      maintenanceOpen += u.maintenanceOpen;
+      if (u.maintenancePriority === 'high') maintenanceHighPriority++;
+      energyKwhToday += u.energyKwhToday;
+      handover[u.handoverStatus]++;
+    }
+    const adopted = units.filter((u) => u.handoverStatus !== 'vacant').length;
+    return { status: 200, body: {
+      totalUnits: units.length,
+      adoptionRate: Number((adopted / units.length).toFixed(2)),
+      fleetHealth,
+      maintenance: { open: maintenanceOpen, highPriority: maintenanceHighPriority },
+      handover,
+      energy: { totalKwhToday: Number(energyKwhToday.toFixed(1)), avgKwhPerUnit: Number((energyKwhToday / units.length).toFixed(2)) },
+      units,
+    } };
+  },
+
+  // Away-state: current occupancy/away context for an apartment. Only apt_401 has
+  // simulated device telemetry in this mock; other apartments have no live devices.
+  async '/fetchAwayState'(body) {
+    const apartmentId = body.apartmentId ?? APARTMENT;
+    if (apartmentId !== APARTMENT) {
+      return { status: 404, body: { code: 'VALIDATION', message: `No live device telemetry for ${apartmentId}; only ${APARTMENT} is simulated in this mock.`, retryable: false } };
+    }
+    const occupancy = store.devices.find((d) => d.type === 'occupancy');
+    const now = new Date();
+    const activeGrants = store.grants
+      .filter((g) => g.apartmentId === apartmentId && isGrantActiveAt(g, now))
+      .map((g) => ({ id: g.id, actor: g.actor, role: g.role, scope: g.scope }));
+    return { status: 200, body: {
+      apartmentId, occupied: occupancy?.state?.occupied ?? null, since: occupancy?.lastUpdated ?? null, activeGrants,
+    } };
   },
 
   // --- debug/testing helpers, NOT part of the ADAPTER.md surface ---
