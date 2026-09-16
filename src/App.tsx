@@ -305,72 +305,126 @@ function App() {
   const [retryKey, setRetryKey] = useState(0);
   const reduce = Boolean(useReducedMotion());
 
+  // One synchronization loop owns bootstrap, polling, focus recovery and teardown.
+  // Keeping these in one place prevents cursor races and overlapping focus polls.
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(devices.length === 0); setLoadError(null); setConnection('reconnecting');
-    Promise.all([adapter.fetchDevices(APARTMENT_ID, controller.signal), adapter.fetchWhyCards(APARTMENT_ID, controller.signal), adapter.fetchGrants(APARTMENT_ID, controller.signal)])
-      .then(([d, c, g]) => { setDevices(d); setCards(c); setGrants(g); setConnection('live'); })
-      .catch((cause) => { if (!controller.signal.aborted) { setLoadError(errorMessage(cause)); setConnection('offline'); } })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => controller.abort();
-  }, [retryKey]);
-
-  // Live feed: polls pollFeed on a cursor, upserts WhyCards/SosEvents, refreshes
-  // devices after any Event batch. Starts on mount, stops on unmount.
-  useEffect(() => {
-    let cancelled = false;
     let cursor: string | undefined;
     let timer: number | undefined;
-    let firstCall = true;
     let failures = 0;
+    let polling = false;
+    let pollAgain = false;
+    let forceSnapshot = false;
+    let lastSnapshotAt = 0;
+    const seenEvents = new Set<string>();
 
-    async function poll() {
-      if (cancelled) return;
-      let nextDelay = 2000;
-      try {
-        const batch = await adapter.pollFeed({ apartmentId: APARTMENT_ID, cursor });
-        if (cancelled) return;
-        failures = 0; setConnection('live');
+    setLoading(devices.length === 0);
+    setLoadError(null);
+    setConnection('reconnecting');
 
-        if (batch.reset && !firstCall) {
-          const [d, g] = await Promise.all([adapter.fetchDevices(APARTMENT_ID), adapter.fetchGrants(APARTMENT_ID)]);
-          if (cancelled) return;
-          setDevices(d);
-          setGrants(g);
-        }
-        firstCall = false;
-        cursor = batch.cursor;
+    async function refreshSnapshots() {
+      const [nextDevices, , nextGrants] = await Promise.all([
+        adapter.fetchDevices(APARTMENT_ID, controller.signal),
+        adapter.fetchRules(APARTMENT_ID, controller.signal),
+        adapter.fetchGrants(APARTMENT_ID, controller.signal),
+      ]);
+      if (controller.signal.aborted) return;
+      setDevices(nextDevices);
+      setGrants(nextGrants);
+      lastSnapshotAt = Date.now();
+    }
 
-        const newCards = batch.items.filter((i) => i.kind === 'why_card').map((i) => i.data as WhyCard);
-        const newSos = batch.items.filter((i) => i.kind === 'sos_event').map((i) => i.data as SosEvent);
-        const hasEvents = batch.items.some((i) => i.kind === 'event');
+    function applyFeed(items: Awaited<ReturnType<typeof adapter.pollFeed>>['items'], reset: boolean) {
+      const nextCards = items.filter((item) => item.kind === 'why_card').map((item) => item.data as WhyCard);
+      const nextSos = items.filter((item) => item.kind === 'sos_event').map((item) => item.data as SosEvent);
+      const hasNewEvents = items.some((item) => {
+        if (item.kind !== 'event' || seenEvents.has(item.data.id)) return false;
+        seenEvents.add(item.data.id);
+        return true;
+      });
 
-        if (newCards.length) {
+      if (reset) {
+        setCards(nextCards);
+        setSos(nextSos.at(-1) ?? null);
+      } else {
+        if (nextCards.length) {
           setCards((all) => {
-            const byId = new Map(all.map((c) => [c.id, c]));
-            for (const c of newCards) byId.set(c.id, c);
+            const byId = new Map(all.map((card) => [card.id, card]));
+            for (const card of nextCards) byId.set(card.id, card);
             return Array.from(byId.values());
           });
         }
-        if (newSos.length) setSos(newSos[newSos.length - 1]);
-        if (hasEvents) {
-          const d = await adapter.fetchDevices(APARTMENT_ID);
-          if (!cancelled) setDevices(d);
-        }
-
-        nextDelay = batch.hasMore ? 0 : 2000;
-      } catch {
-        failures += 1;
-        setConnection(failures > 1 ? 'stale' : 'reconnecting');
-        nextDelay = [2000, 4000, 8000, 15000][Math.min(failures - 1, 3)];
+        if (nextSos.length) setSos(nextSos.at(-1) ?? null);
       }
-      if (!cancelled) timer = window.setTimeout(poll, nextDelay);
+      return hasNewEvents;
     }
 
-    poll();
-    const revalidate = () => { if (document.visibilityState === 'visible') { if (timer !== undefined) window.clearTimeout(timer); void poll(); } };
-    window.addEventListener('focus', revalidate); document.addEventListener('visibilitychange', revalidate);
-    return () => { cancelled = true; if (timer !== undefined) window.clearTimeout(timer); window.removeEventListener('focus', revalidate); document.removeEventListener('visibilitychange', revalidate); };
+    async function poll() {
+      if (controller.signal.aborted) return;
+      if (polling) { pollAgain = true; return; }
+      polling = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+      let nextDelay = 2000;
+      try {
+        const batch = await adapter.pollFeed({ apartmentId: APARTMENT_ID, cursor }, controller.signal);
+        if (controller.signal.aborted) return;
+        cursor = batch.cursor;
+        const hasNewEvents = applyFeed(batch.items, batch.reset);
+        const snapshotDue = Date.now() - lastSnapshotAt >= 15_000;
+        if (batch.reset || hasNewEvents || forceSnapshot || snapshotDue) await refreshSnapshots();
+        forceSnapshot = false;
+        failures = 0;
+        setLoadError(null);
+        setConnection('live');
+        nextDelay = batch.hasMore ? 0 : 2000;
+      } catch (cause) {
+        if (controller.signal.aborted) return;
+        failures += 1;
+        if (devices.length === 0) setLoadError(errorMessage(cause));
+        setConnection(failures > 1 ? 'stale' : 'reconnecting');
+        nextDelay = [2000, 4000, 8000, 15000][Math.min(failures - 1, 3)];
+      } finally {
+        polling = false;
+        if (controller.signal.aborted) return;
+        setLoading(false);
+        if (pollAgain) {
+          pollAgain = false;
+          timer = window.setTimeout(poll, 0);
+        } else {
+          timer = window.setTimeout(poll, nextDelay);
+        }
+      }
+    }
+
+    async function bootstrap() {
+      try {
+        // Snapshot first, cursor-less feed second, then snapshot again to close the
+        // race between those reads as required by ADAPTER.md.
+        await refreshSnapshots();
+        await poll();
+      } catch (cause) {
+        if (!controller.signal.aborted) {
+          setLoadError(errorMessage(cause));
+          setConnection('offline');
+          setLoading(false);
+        }
+      }
+    }
+
+    const revalidate = () => {
+      if (document.visibilityState !== 'visible') return;
+      forceSnapshot = true;
+      void poll();
+    };
+    void bootstrap();
+    window.addEventListener('focus', revalidate);
+    document.addEventListener('visibilitychange', revalidate);
+    return () => {
+      controller.abort();
+      if (timer !== undefined) window.clearTimeout(timer);
+      window.removeEventListener('focus', revalidate);
+      document.removeEventListener('visibilitychange', revalidate);
+    };
   }, [retryKey]);
 
   function reportWriteError(cause: unknown) { setWriteError(errorMessage(cause)); setConnection('stale'); }
