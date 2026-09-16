@@ -4,12 +4,22 @@ import type { CapabilityGrant, Device, Rule, SosEvent, WhyCard, WhyOverride } fr
 const BASE = import.meta.env.VITE_ENGINE_URL ?? 'http://localhost:8787';
 
 async function call<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body ?? {}),
-    signal,
-  });
+  const timeout = AbortSignal.timeout(6000);
+  const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body ?? {}),
+      signal: requestSignal,
+    });
+  } catch (cause) {
+    if (signal?.aborted) throw cause;
+    const err = new Error('The home engine is unavailable. Check the connection and try again.');
+    Object.assign(err, { code: 'UNAVAILABLE', retryable: true, cause });
+    throw err;
+  }
   const data = await res.json();
   if (!res.ok) {
     const err = new Error(data?.message || `${path} failed (${res.status})`);

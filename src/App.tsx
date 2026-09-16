@@ -14,7 +14,12 @@ import { Dialog } from './components/Dialog';
 
 type Route = 'home' | 'scenes' | 'access' | 'building';
 type Role = 'resident' | 'operator';
+type ConnectionState = 'live' | 'reconnecting' | 'stale' | 'offline';
 const APARTMENT_ID = 'apt_401';
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'The home engine could not complete that request.';
+}
 
 const ROOM_BY_DEVICE: Record<string, Room> = {
   dev_light_living: 'living', dev_curtain_living: 'living', dev_ac_bedroom: 'bedroom',
@@ -169,22 +174,24 @@ function RuleReceipt({ rule, devices, conflicts, onChange }: { rule: Rule; devic
   </section>;
 }
 
-function ScenesView({ devices, onConflict, onSaved }: { devices: Device[]; onConflict: (rule: Rule, conflict: Conflict) => void; onSaved: (rule: Rule) => void }) {
+function ScenesView({ devices, onConflict, onSaved, onWriteError }: { devices: Device[]; onConflict: (rule: Rule, conflict: Conflict) => void; onSaved: (rule: Rule) => void; onWriteError: (error: unknown) => void }) {
   const [sentence, setSentence] = useState('Make it comfortable when I sleep');
   const [proposal, setProposal] = useState<{ rule: Rule; conflicts: Conflict[] } | null>(null);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const reduce = Boolean(useReducedMotion());
   async function interpret(event: FormEvent) {
     event.preventDefault(); if (!sentence.trim()) return;
-    setBusy(true); setProposal(null);
+    setBusy(true); setProposal(null); setError(null);
     try {
       const result = await adapter.submitSentence({ apartmentId: APARTMENT_ID, sentence });
       setProposal(result); setPreview(true);
-    } finally { setBusy(false); }
+    } catch (cause) { setError(errorMessage(cause)); onWriteError(cause); }
+    finally { setBusy(false); }
   }
   async function save() {
-    if (!proposal) return; setBusy(true);
+    if (!proposal) return; setBusy(true); setError(null);
     try {
       const result = await adapter.saveRule({ rule: proposal.rule, resolutions: [], requestId: crypto.randomUUID() });
       if (result.status === 'conflict') {
@@ -193,7 +200,7 @@ function ScenesView({ devices, onConflict, onSaved }: { devices: Device[]; onCon
         return;
       }
       onSaved(result.rule); setProposal(null); setPreview(false);
-    }
+    } catch (cause) { setError(errorMessage(cause)); onWriteError(cause); }
     finally { setBusy(false); }
   }
   const previewRoom = proposal ? (proposal.rule.actions[0]?.deviceId === 'all' ? 'all' : String(devices.find((device) => device.id === proposal.rule.actions[0]?.deviceId)?.state.room ?? 'all')) as Room : 'all';
@@ -202,6 +209,7 @@ function ScenesView({ devices, onConflict, onSaved }: { devices: Device[]; onCon
     <section className="scene-compose">
       <h1>Say how you want home to feel.</h1><p>Describe the outcome in your words. Concord will show the exact rule before anything is saved.</p>
       <form className="prompt-box" onSubmit={interpret}><MessageSquareText /><textarea value={sentence} onChange={(e) => setSentence(e.target.value)} aria-label="Describe your scene" /><button disabled={busy || !sentence.trim()}>{busy ? 'Understanding…' : <>Make the rule <ArrowRight /></>}</button></form>
+      {error && <p className="inline-error" role="alert"><AlertTriangle /> {error}</p>}
       <div className="prompt-examples"><span>Try</span>{['Lock up when everyone leaves', 'Cool the bedroom before sleep', 'Welcome me home after sunset'].map((text) => <button key={text} onClick={() => setSentence(text)}>{text}</button>)}</div>
       <AnimatePresence mode="wait">{proposal && <motion.div key={proposal.rule.id} initial={{ opacity: 0, transform: 'translateY(12px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }} exit={{ opacity: 0 }} transition={{ duration: reduce ? .01 : .22 }}>
         <RuleReceipt rule={proposal.rule} devices={devices} conflicts={proposal.conflicts} onChange={(rule) => setProposal({ ...proposal, rule })} />
@@ -212,26 +220,29 @@ function ScenesView({ devices, onConflict, onSaved }: { devices: Device[]; onCon
   </div>;
 }
 
-function AccessView({ grants, onCreate }: { grants: CapabilityGrant[]; onCreate: (grant: CapabilityGrant) => void }) {
+function AccessView({ grants, onCreate, onWriteError }: { grants: CapabilityGrant[]; onCreate: (grant: CapabilityGrant) => void; onWriteError: (error: unknown) => void }) {
   const [role, setRole] = useState<GrantRole>('visitor');
   const [name, setName] = useState('Amaya');
   const [duration, setDuration] = useState('2');
   const [qr, setQr] = useState('');
   const [created, setCreated] = useState<CapabilityGrant | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   async function createPass(event: FormEvent) {
-    event.preventDefault(); setBusy(true);
+    event.preventDefault(); setBusy(true); setError(null);
     const from = new Date(); const until = new Date(from.getTime() + Number(duration) * 3_600_000);
     try {
       const grant = await adapter.createGrant({ grant: { actor: name, apartmentId: APARTMENT_ID, role, scope: ['lock.unlock'], validFrom: from.toISOString(), validUntil: until.toISOString() }, requestId: crypto.randomUUID() });
       setCreated(grant); onCreate(grant);
       setQr('/assets/pass-qr.svg');
-    } finally { setBusy(false); }
+    } catch (cause) { setError(errorMessage(cause)); onWriteError(cause); }
+    finally { setBusy(false); }
   }
   return <div className="access-view"><section className="access-form"><h1>A key that knows when to leave.</h1><p>Create a pass for the right door and the right window. It expires without a reminder.</p>
     <form onSubmit={createPass} className="form-stack"><fieldset><legend>Who is it for?</legend><div className="segmented">{(['visitor','delivery','cleaner'] as GrantRole[]).map((item) => <button type="button" key={item} className={role === item ? 'selected' : ''} onClick={() => setRole(item)}>{item === 'visitor' ? <UserRound /> : item === 'delivery' ? <DoorOpen /> : <Sparkles />}{item}</button>)}</div></fieldset>
       <label>Name or service<input value={name} onChange={(e) => setName(e.target.value)} required /></label><label>Access window<select value={duration} onChange={(e) => setDuration(e.target.value)}><option value="1">Next 1 hour</option><option value="2">Next 2 hours</option><option value="4">Next 4 hours</option><option value="24">Today</option></select></label>
       <div className="scope-row"><ShieldCheck /><span><strong>Entry only</strong><small>Unlock apartment 401 · no device control</small></span></div><button className="primary-button full" disabled={busy}>{busy ? 'Creating…' : <>Create pass <ArrowRight /></>}</button>
+      {error && <p className="inline-error" role="alert"><AlertTriangle /> {error}</p>}
     </form></section>
     <aside className="pass-preview">{created ? <div className="qr-ticket"><div className="ticket-top"><BrandMark /><span>CONCORD PASS</span></div><img src={qr} alt={`QR code for ${created.actor}'s demo pass`} /><h2>{created.actor}</h2><p>{created.role} · Apartment 401</p><div className="ticket-window"><Clock3 /><span>Valid until<strong>{formatTime(created.validUntil)}</strong></span></div><small>Demo pass · secure redemption pending backend integration</small></div> : <div className="empty-pass"><KeyRound /><h2>Your pass appears here</h2><p>The QR and expiry window will be ready to share.</p></div>}
       {grants.length > 0 && <div className="active-passes">{grants.map((grant) => <div key={grant.id}><span className="avatar">{grant.actor[0]}</span><span><strong>{grant.actor}</strong><small>{grant.role} · until {formatTime(grant.validUntil)}</small></span><span className="active-label">Active</span></div>)}</div>}</aside>
@@ -271,13 +282,21 @@ function App() {
   const [sos, setSos] = useState<SosEvent | null>(null);
   const [handoverOpen, setHandoverOpen] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [connection, setConnection] = useState<ConnectionState>('reconnecting');
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [writeError, setWriteError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
   const reduce = Boolean(useReducedMotion());
 
   useEffect(() => {
     const controller = new AbortController();
-    Promise.all([adapter.fetchDevices(APARTMENT_ID, controller.signal), adapter.fetchWhyCards(APARTMENT_ID, controller.signal), adapter.fetchGrants(APARTMENT_ID, controller.signal)]).then(([d, c, g]) => { setDevices(d); setCards(c); setGrants(g); setLoading(false); });
+    setLoading(devices.length === 0); setLoadError(null); setConnection('reconnecting');
+    Promise.all([adapter.fetchDevices(APARTMENT_ID, controller.signal), adapter.fetchWhyCards(APARTMENT_ID, controller.signal), adapter.fetchGrants(APARTMENT_ID, controller.signal)])
+      .then(([d, c, g]) => { setDevices(d); setCards(c); setGrants(g); setConnection('live'); })
+      .catch((cause) => { if (!controller.signal.aborted) { setLoadError(errorMessage(cause)); setConnection('offline'); } })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, []);
+  }, [retryKey]);
 
   // Live feed: polls pollFeed on a cursor, upserts WhyCards/SosEvents, refreshes
   // devices after any Event batch. Starts on mount, stops on unmount.
@@ -286,6 +305,7 @@ function App() {
     let cursor: string | undefined;
     let timer: number | undefined;
     let firstCall = true;
+    let failures = 0;
 
     async function poll() {
       if (cancelled) return;
@@ -293,6 +313,7 @@ function App() {
       try {
         const batch = await adapter.pollFeed({ apartmentId: APARTMENT_ID, cursor });
         if (cancelled) return;
+        failures = 0; setConnection('live');
 
         if (batch.reset && !firstCall) {
           const [d, g] = await Promise.all([adapter.fetchDevices(APARTMENT_ID), adapter.fetchGrants(APARTMENT_ID)]);
@@ -322,18 +343,25 @@ function App() {
 
         nextDelay = batch.hasMore ? 0 : 2000;
       } catch {
-        // retryable per ADAPTER.md: keep last snapshot, try again next tick
+        failures += 1;
+        setConnection(failures > 1 ? 'stale' : 'reconnecting');
+        nextDelay = [2000, 4000, 8000, 15000][Math.min(failures - 1, 3)];
       }
       if (!cancelled) timer = window.setTimeout(poll, nextDelay);
     }
 
     poll();
-    return () => { cancelled = true; if (timer !== undefined) window.clearTimeout(timer); };
-  }, []);
+    const revalidate = () => { if (document.visibilityState === 'visible') { if (timer !== undefined) window.clearTimeout(timer); void poll(); } };
+    window.addEventListener('focus', revalidate); document.addEventListener('visibilitychange', revalidate);
+    return () => { cancelled = true; if (timer !== undefined) window.clearTimeout(timer); window.removeEventListener('focus', revalidate); document.removeEventListener('visibilitychange', revalidate); };
+  }, [retryKey]);
+
+  function reportWriteError(cause: unknown) { setWriteError(errorMessage(cause)); setConnection('stale'); }
 
   async function override(id: string, value: WhyOverride) {
     setOverrideBusy(id);
-    try { const updated = await adapter.postWhyOverride({ whyCardId: id, override: value, requestId: crypto.randomUUID() }); setCards((all) => all.map((card) => card.id === id ? updated : card)); }
+    try { const updated = await adapter.postWhyOverride({ whyCardId: id, override: value, requestId: crypto.randomUUID() }); setCards((all) => all.map((card) => card.id === id ? updated : card)); setWriteError(null); }
+    catch (cause) { reportWriteError(cause); }
     finally { setOverrideBusy(null); }
   }
 
@@ -344,7 +372,9 @@ function App() {
       const updated = decision === 'approve' ? await adapter.approveWhyCard(input) : await adapter.dismissWhyCard(input);
       setCards((all) => all.map((card) => card.id === id ? updated : card));
       if (decision === 'approve') setDevices(await adapter.fetchDevices(APARTMENT_ID));
-    } finally { setOverrideBusy(null); }
+      setWriteError(null);
+    } catch (cause) { reportWriteError(cause); }
+    finally { setOverrideBusy(null); }
   }
 
   async function commandDevice(device: Device, set: Record<string, unknown>) {
@@ -352,14 +382,18 @@ function App() {
     try {
       await adapter.commandDevice({ deviceId: device.id, set, requestId: crypto.randomUUID() });
       setDevices(await adapter.fetchDevices(APARTMENT_ID));
-    } finally { setCommandBusy(null); }
+      setWriteError(null);
+    } catch (cause) { reportWriteError(cause); }
+    finally { setCommandBusy(null); }
   }
 
   function switchRole(next: Role) { setRole(next); setRoute(next === 'operator' ? 'building' : 'home'); setMobileMenu(false); }
-  async function triggerSos() { const event = await adapter.triggerSos({ apartmentId: APARTMENT_ID, requestId: crypto.randomUUID() }); setSos(event); }
+  async function triggerSos() { try { const event = await adapter.triggerSos({ apartmentId: APARTMENT_ID, requestId: crypto.randomUUID() }); setSos(event); setWriteError(null); } catch (cause) { reportWriteError(cause); throw cause; } }
   const pageTitle = role === 'operator' ? 'Building' : NAV.find((item) => item.id === route)?.label ?? 'Home';
 
-  if (loading) return <div className="boot-screen"><BrandMark /><span>Preparing Apartment 401</span></div>;
+  if (loading) return <div className="boot-screen"><BrandMark /><span>Connecting to Apartment 401…</span></div>;
+  if (loadError && devices.length === 0) return <div className="boot-screen boot-error" role="alert"><BrandMark /><strong>Home engine offline</strong><span>{loadError}</span><button className="primary-button" onClick={() => setRetryKey((value) => value + 1)}>Retry connection</button></div>;
+  const connectionCopy: Record<ConnectionState, string> = { live: 'Home engine live', reconnecting: 'Reconnecting…', stale: 'Data may be stale', offline: 'Engine offline' };
   return <div className={`app-shell ${role}`}>
     <header className="mobile-header"><button className="brand-mobile" onClick={() => { setRoute(role === 'operator' ? 'building' : 'home'); }}><BrandMark /><span>Concord</span></button><div><button className="emergency-compact" onClick={() => setSosOpen(true)}><HeartPulse /> Emergency</button><button className="icon-button" onClick={() => setMobileMenu((v) => !v)} aria-label="Open menu">{mobileMenu ? <X /> : <Menu />}</button></div></header>
     <aside className={`sidebar ${mobileMenu ? 'mobile-open' : ''}`}>
@@ -370,11 +404,12 @@ function App() {
       <button className="emergency-button" onClick={() => { setSosOpen(true); setMobileMenu(false); }}><HeartPulse /><span><strong>Emergency</strong><small>Get help now</small></span></button>
       <div className="role-switch"><span>Demo view</span><div><button className={role === 'resident' ? 'selected' : ''} onClick={() => switchRole('resident')}>Resident</button><button className={role === 'operator' ? 'selected' : ''} onClick={() => switchRole('operator')}>Operator</button></div></div>
     </aside>
-    <main className="app-content" id="main-content"><div className="desktop-topbar"><span>{pageTitle}</span><div><span className="connection"><i /> Demo engine live</span><button className="notification-button" aria-label="Notifications"><BellRing /></button><span className="avatar desktop-avatar">M</span></div></div>
+    <main className="app-content" id="main-content"><div className="desktop-topbar"><span>{pageTitle}</span><div><span className={`connection ${connection}`} role="status"><i /> {connectionCopy[connection]}</span><button className="notification-button" aria-label="Notifications"><BellRing /></button><span className="avatar desktop-avatar">M</span></div></div>
+      {connection !== 'live' && <div className="connection-banner" role="status"><AlertTriangle /><span>{connectionCopy[connection]}. The last confirmed home state remains visible.</span><button onClick={() => setRetryKey((value) => value + 1)}>Retry now</button></div>}
       <AnimatePresence mode="wait" initial={false}><motion.div key={`${role}-${route}`} className="route-frame" initial={reduce ? { opacity: 0 } : { opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }} exit={{ opacity: 0 }} transition={{ duration: reduce ? .01 : .18 }}>
         {route === 'home' && <HomeView devices={devices} cards={cards} selectedRoom={room} setSelectedRoom={setRoom} onOverride={override} onProposal={decideProposal} overrideBusy={overrideBusy} onCommand={commandDevice} commandBusy={commandBusy} onOpenScenes={() => setRoute('scenes')} />}
-        {route === 'scenes' && <ScenesView devices={devices} onConflict={(rule, found) => setConflict({ rule, conflict: found })} onSaved={setSavedRule} />}
-        {route === 'access' && <AccessView grants={grants} onCreate={(grant) => setGrants((all) => [grant, ...all])} />}
+        {route === 'scenes' && <ScenesView devices={devices} onConflict={(rule, found) => setConflict({ rule, conflict: found })} onSaved={setSavedRule} onWriteError={reportWriteError} />}
+        {route === 'access' && <AccessView grants={grants} onCreate={(grant) => setGrants((all) => [grant, ...all])} onWriteError={reportWriteError} />}
         {route === 'building' && <BuildingView onHandover={() => setHandoverOpen(true)} />}
       </motion.div></AnimatePresence>
     </main>
@@ -384,6 +419,7 @@ function App() {
     <EmergencyDialog open={sosOpen} sos={sos} onClose={() => { setSosOpen(false); setSos(null); }} onTrigger={triggerSos} />
     <HandoverDialog open={handoverOpen} onClose={() => setHandoverOpen(false)} onSaved={(grant) => { setGrants((all) => [grant, ...all]); setHandoverOpen(false); }} />
     <AnimatePresence>{savedRule && <motion.div className="toast" role="status" initial={{ opacity: 0, transform: 'translateY(12px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }} exit={{ opacity: 0 }}><span><Check /></span><div><strong>Scene ready</strong><small>{savedRule.name}</small></div><button onClick={() => setSavedRule(null)} aria-label="Dismiss"><X /></button></motion.div>}</AnimatePresence>
+    <AnimatePresence>{writeError && <motion.div className="toast error-toast" role="alert" initial={{ opacity: 0, transform: 'translateY(12px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }} exit={{ opacity: 0 }}><span><AlertTriangle /></span><div><strong>Engine write failed</strong><small>{writeError}</small></div><button onClick={() => setWriteError(null)} aria-label="Dismiss error"><X /></button></motion.div>}</AnimatePresence>
   </div>;
 }
 

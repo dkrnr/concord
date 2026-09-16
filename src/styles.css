@@ -40,6 +40,7 @@ p { color: var(--muted); line-height: 1.58; }
 .eyebrow { display: block; color: var(--muted); font-size: 16px; font-weight: 700; letter-spacing: .035em; margin-bottom: 10px; }
 
 .boot-screen { min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 18px; color: var(--muted); font-size: 16px; }
+.boot-error { padding: 24px; text-align: center; }.boot-error strong { color: var(--ink); font-size: 22px; }.boot-error span { max-width: 460px; line-height: 1.5; }
 .brand-mark { width: 34px; height: 34px; position: relative; display: inline-block; flex: 0 0 auto; }
 .brand-mark span { position: absolute; width: 18px; height: 18px; border: 2px solid currentColor; transform: rotate(45deg); border-radius: 3px; }
 .brand-mark span:nth-child(1) { left: 1px; top: 8px; }
@@ -78,6 +79,9 @@ p { color: var(--muted); line-height: 1.58; }
 .desktop-topbar > div { display: flex; align-items: center; gap: 16px; }
 .connection { font-size: 16px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
 .connection i { width: 7px; height: 7px; background: #34865e; border-radius: 50%; }
+.connection.reconnecting i { background: #b47b2a; animation: pulse 1.2s ease-in-out infinite; }.connection.stale i, .connection.offline i { background: #b6534f; }
+.connection-banner { min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 8px 20px; color: #69442c; background: #fff0d8; border-bottom: 1px solid #e5c69b; font-size: 16px; }.connection-banner svg { width: 18px; }.connection-banner button { border: 0; background: transparent; color: var(--primary-dark); font-weight: 800; text-decoration: underline; cursor: pointer; font-size: 16px; }
+@keyframes pulse { 50% { opacity: .35; } }
 .notification-button, .icon-button { border: 0; background: transparent; cursor: pointer; width: 44px; height: 44px; display: grid; place-content: center; border-radius: 50%; }
 .notification-button svg, .icon-button svg { width: 21px; }
 .desktop-avatar { width: 36px; height: 36px; }
@@ -276,6 +280,7 @@ input, select { min-height: 50px; border: 1px solid #cfd5cd; border-radius: 11px
 .sos-detail { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin: 20px 0; }.sos-detail span { background: #f3f4f0; border-radius: 10px; padding: 12px; font-size: 16px; color: var(--muted); display: flex; flex-direction: column; }.sos-detail strong { font-size: 16px; color: var(--ink); margin-top: 5px; }
 .handover-form > p { font-size: 16px; }.handover-form { display: grid; gap: 18px; }.form-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }.handover-form .dialog-actions { margin-top: 4px; }
 .toast { position: fixed; z-index: 150; right: 24px; bottom: 24px; background: var(--ink); color: white; min-width: 330px; min-height: 70px; border-radius: 15px; padding: 13px; display: grid; grid-template-columns: 40px 1fr 36px; gap: 10px; align-items: center; box-shadow: 0 20px 60px rgba(20,40,31,.27); }.toast > span { width: 38px; height: 38px; display: grid; place-content: center; border-radius: 50%; background: #3d715d; }.toast > span svg { width: 18px; }.toast > div { display: flex; flex-direction: column; }.toast strong { font-size: 16px; }.toast small { color: #cdd8d2; font-size: 16px; margin-top: 3px; }.toast button { border: 0; background: transparent; color: white; cursor: pointer; }.toast button svg { width: 18px; }
+.error-toast { background: #572c29; }.error-toast > span { background: #873e38; }.inline-error { display: flex; align-items: flex-start; gap: 8px; color: #8b302b; background: #fff1ef; border: 1px solid #e8bbb6; border-radius: 10px; padding: 12px; font-size: 16px; }.inline-error svg { width: 18px; flex: 0 0 auto; }
 
 @media (hover: hover) and (pointer: fine) {
   .sidebar nav button:not(.active):hover { background: rgba(255,255,255,.55); color: var(--ink); }
