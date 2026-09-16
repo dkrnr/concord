@@ -15,9 +15,10 @@ import { passPayload, qrDataUrl } from './data/passQr';
 import { applyTheme, preferredTheme, type Theme } from './theme';
 import { useI18n, type Language } from './i18n';
 
-type Route = 'home' | 'scenes' | 'access' | 'building';
+type Route = 'home' | 'scenes' | 'access' | 'profile' | 'building';
 type Role = 'resident' | 'operator';
 type ConnectionState = 'live' | 'reconnecting' | 'stale' | 'offline';
+type ResidentProfile = { name: string; photo: string | null };
 const APARTMENT_ID = 'apt_401';
 
 function errorMessage(error: unknown) {
@@ -112,8 +113,9 @@ function DeviceControls({ device, busy, onCommand }: { device: Device; busy: boo
   return <span className="read-only-device">{t('Sensor · read only')}</span>;
 }
 
-function HomeView({ devices, cards, selectedRoom, setSelectedRoom, onOverride, onProposal, overrideBusy, onCommand, commandBusy, onOpenScenes }: {
+function HomeView({ devices, cards, residentName, selectedRoom, setSelectedRoom, onOverride, onProposal, overrideBusy, onCommand, commandBusy, onOpenScenes }: {
   devices: Device[]; cards: WhyCard[]; selectedRoom: Room; setSelectedRoom: (room: Room) => void;
+  residentName: string;
   onOverride: (id: string, value: WhyOverride) => void; overrideBusy: string | null;
   onProposal: (id: string, decision: 'approve' | 'dismiss') => void;
   onCommand: (device: Device, set: Record<string, unknown>) => void; commandBusy: string | null; onOpenScenes: () => void;
@@ -122,7 +124,7 @@ function HomeView({ devices, cards, selectedRoom, setSelectedRoom, onOverride, o
   const reduce = Boolean(useReducedMotion());
   return <div className="home-view">
     <section className="home-main">
-      <div className="greeting"><div><span className="eyebrow">{t('Tuesday · Apartment 401')}</span><h1>{t('Good evening, Maria.')}</h1><p>{t('Your home has settled in. One choice is waiting for you.')}</p></div><button className="new-scene" onClick={onOpenScenes}><Plus /> {t('New scene')}</button></div>
+      <div className="greeting"><div><span className="eyebrow">{t('Tuesday · Apartment 401')}</span><h1>{t('Good evening, {name}.', { name: residentName.split(' ')[0] })}</h1><p>{t('Your home has settled in. One choice is waiting for you.')}</p></div><button className="new-scene" onClick={onOpenScenes}><Plus /> {t('New scene')}</button></div>
       <div className="home-stage">
         <div className="stage-heading"><div><span className="live-dot" /> {t('Live home')}</div><span>{t('4 rooms · 6 devices')}</span></div>
         <div className="scene-wrap">
@@ -149,6 +151,44 @@ function HomeView({ devices, cards, selectedRoom, setSelectedRoom, onOverride, o
       <div className="timeline">{cards.map((card) => <WhyCardView key={card.id} card={card} active={card.evidence.some((e) => ROOM_BY_DEVICE[e.deviceId] === selectedRoom)} onInspect={() => setSelectedRoom(ROOM_BY_DEVICE[card.evidence[0]?.deviceId] ?? 'all')} onOverride={(value) => onOverride(card.id, value)} onProposal={(decision) => onProposal(card.id, decision)} busy={overrideBusy === card.id} />)}</div>
     </aside>
   </div>;
+}
+
+function ProfileView({ profile, onSave }: { profile: ResidentProfile; onSave: (profile: ResidentProfile) => void }) {
+  const { t } = useI18n();
+  const [name, setName] = useState(profile.name);
+  const [photo, setPhoto] = useState<string | null>(profile.photo);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  function choosePhoto(file?: File) {
+    if (!file) return;
+    if (!file.type.startsWith('image/') || file.size > 3 * 1024 * 1024) {
+      setError(t('Choose a JPG, PNG or WebP image under 3 MB.'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => { setPhoto(String(reader.result)); setError(null); };
+    reader.onerror = () => setError(t('That image could not be read. Choose another file.'));
+    reader.readAsDataURL(file);
+  }
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    const nextName = name.trim();
+    if (!nextName) { setError(t('Enter the resident name.')); return; }
+    onSave({ name: nextName, photo });
+    setSaved(true);
+    setError(null);
+    window.setTimeout(() => setSaved(false), 1800);
+  }
+
+  return <div className="profile-view"><section className="profile-intro"><div className="profile-avatar-large">{photo ? <img src={photo} alt="" /> : <span>{name.trim()[0] || 'M'}</span>}</div><div><h1>{t('Your resident profile')}</h1><p>{t('Keep the identity shown across your home controls current. Changes stay in this demo session.')}</p></div></section><form className="profile-form" onSubmit={submit}>
+    <label>{t('Resident name')}<input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} autoComplete="name" /></label>
+    <label className="photo-field"><span>{t('Profile picture')}</span><span className="photo-drop"><UserRound /><span><strong>{t(photo ? 'Replace picture' : 'Choose a picture')}</strong><small>{t('JPG, PNG or WebP · up to 3 MB')}</small></span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => choosePhoto(event.target.files?.[0])} /></span></label>
+    {photo && <button type="button" className="text-button profile-remove" onClick={() => setPhoto(null)}>{t('Remove picture')}</button>}
+    {error && <p className="inline-error" role="alert"><AlertTriangle /> {error}</p>}
+    <button className="primary-button" disabled={!name.trim()}>{saved ? <><Check /> {t('Profile saved')}</> : t('Save profile')}</button>
+  </form></div>;
 }
 
 function conditionCopy(rule: Rule, t: (message: string) => string = (message) => message) {
@@ -312,6 +352,7 @@ function App() {
   const [writeError, setWriteError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const [theme, setTheme] = useState<Theme>(() => preferredTheme());
+  const [profile, setProfile] = useState<ResidentProfile>({ name: 'Maria Perera', photo: null });
   const reduce = Boolean(useReducedMotion());
 
   function toggleTheme() {
@@ -475,7 +516,7 @@ function App() {
 
   function switchRole(next: Role) { setRole(next); setRoute(next === 'operator' ? 'building' : 'home'); setMobileMenu(false); }
   async function triggerSos() { try { const event = await adapter.triggerSos({ apartmentId: APARTMENT_ID, requestId: crypto.randomUUID() }); setSos(event); setWriteError(null); } catch (cause) { reportWriteError(cause); throw cause; } }
-  const pageTitle = t(role === 'operator' ? 'Building' : NAV.find((item) => item.id === route)?.label ?? 'Home');
+  const pageTitle = t(role === 'operator' ? 'Building' : route === 'profile' ? 'Profile' : NAV.find((item) => item.id === route)?.label ?? 'Home');
 
   if (loading) return <div className="boot-screen"><BrandMark /><span>{t('Connecting to Apartment 401…')}</span></div>;
   if (loadError && devices.length === 0) return <div className="boot-screen boot-error" role="alert"><BrandMark /><strong>{t('Home engine offline')}</strong><span>{loadError}</span><button className="primary-button" onClick={() => setRetryKey((value) => value + 1)}>{t('Retry connection')}</button></div>;
@@ -484,7 +525,7 @@ function App() {
     <header className="mobile-header"><button className="brand-mobile" onClick={() => { setRoute(role === 'operator' ? 'building' : 'home'); }}><BrandMark /><span>Concord</span></button><div><button className="icon-button" onClick={toggleTheme} aria-label={t(theme === 'light' ? 'Use dark mode' : 'Use light mode')}>{theme === 'light' ? <Moon /> : <Sun />}</button><button className="emergency-compact" onClick={() => setSosOpen(true)}><HeartPulse /> {t('Emergency')}</button><button className="icon-button" onClick={() => setMobileMenu((v) => !v)} aria-label={t('Open menu')}>{mobileMenu ? <X /> : <Menu />}</button></div></header>
     <aside className={`sidebar ${mobileMenu ? 'mobile-open' : ''}`}>
       <button className="brand" onClick={() => setRoute(role === 'operator' ? 'building' : 'home')}><BrandMark /><span>Concord</span></button>
-      <div className="residence-chip"><div className="residence-avatar">{role === 'resident' ? 'M' : <Building2 />}</div><span><strong>{role === 'resident' ? 'Maria’s home' : 'Aster Tower'}</strong><small>{role === 'resident' ? 'Apartment 401' : t('Building')}</small></span></div>
+      <button className="residence-chip" onClick={() => role === 'resident' && setRoute('profile')}><div className="residence-avatar">{role === 'resident' ? profile.photo ? <img src={profile.photo} alt="" /> : profile.name[0] : <Building2 />}</div><span><strong>{role === 'resident' ? profile.name : 'Aster Tower'}</strong><small>{role === 'resident' ? t('Apartment 401 · Edit profile') : t('Building')}</small></span></button>
       <nav aria-label={t('Primary navigation')}>{role === 'resident' ? NAV.map(({ id, label, icon: Icon }) => <button key={id} className={route === id ? 'active' : ''} onClick={() => { setRoute(id); setMobileMenu(false); }}><Icon />{t(label)}</button>) : <button className="active"><LayoutGrid />{t('Building')}</button>}</nav>
       <div className="sidebar-spacer" />
       <label className="language-switch"><Globe2 /><span className="sr-only">{t('Language')}</span><select value={language} onChange={(event) => setLanguage(event.target.value as Language)}><option value="en">{t('English')}</option><option value="es">{t('Spanish')}</option></select></label>
@@ -492,12 +533,13 @@ function App() {
       <button className="emergency-button" onClick={() => { setSosOpen(true); setMobileMenu(false); }}><HeartPulse /><span><strong>{t('Emergency')}</strong><small>{t('Get help now')}</small></span></button>
       <div className="role-switch"><span>{t('Demo view')}</span><div><button className={role === 'resident' ? 'selected' : ''} onClick={() => switchRole('resident')}>{t('Resident')}</button><button className={role === 'operator' ? 'selected' : ''} onClick={() => switchRole('operator')}>{t('Operator')}</button></div></div>
     </aside>
-    <main className="app-content" id="main-content"><div className="desktop-topbar"><span>{pageTitle}</span><div><span className={`connection ${connection}`} role="status"><i /> {connectionCopy[connection]}</span><button className="icon-button theme-topbar" onClick={toggleTheme} aria-label={t(theme === 'light' ? 'Use dark mode' : 'Use light mode')}>{theme === 'light' ? <Moon /> : <Sun />}</button><button className="notification-button" aria-label={t('Notifications')}><BellRing /></button><span className="avatar desktop-avatar">M</span></div></div>
+    <main className="app-content" id="main-content"><div className="desktop-topbar"><span>{pageTitle}</span><div><span className={`connection ${connection}`} role="status"><i /> {connectionCopy[connection]}</span><button className="icon-button theme-topbar" onClick={toggleTheme} aria-label={t(theme === 'light' ? 'Use dark mode' : 'Use light mode')}>{theme === 'light' ? <Moon /> : <Sun />}</button><button className="notification-button" aria-label={t('Notifications')}><BellRing /></button><button className="avatar desktop-avatar avatar-button" onClick={() => { setRole('resident'); setRoute('profile'); }} aria-label={t('Open profile')}>{profile.photo ? <img src={profile.photo} alt="" /> : profile.name[0]}</button></div></div>
       {connection !== 'live' && <div className="connection-banner" role="status"><AlertTriangle /><span>{connectionCopy[connection]}. {t('The last confirmed home state remains visible.')}</span><button onClick={() => setRetryKey((value) => value + 1)}>{t('Retry now')}</button></div>}
       <AnimatePresence mode="wait" initial={false}><motion.div key={`${role}-${route}`} className="route-frame" initial={reduce ? { opacity: 0 } : { opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }} exit={{ opacity: 0 }} transition={{ duration: reduce ? .01 : .18 }}>
-        {route === 'home' && <HomeView devices={devices} cards={cards} selectedRoom={room} setSelectedRoom={setRoom} onOverride={override} onProposal={decideProposal} overrideBusy={overrideBusy} onCommand={commandDevice} commandBusy={commandBusy} onOpenScenes={() => setRoute('scenes')} />}
+        {route === 'home' && <HomeView devices={devices} cards={cards} residentName={profile.name} selectedRoom={room} setSelectedRoom={setRoom} onOverride={override} onProposal={decideProposal} overrideBusy={overrideBusy} onCommand={commandDevice} commandBusy={commandBusy} onOpenScenes={() => setRoute('scenes')} />}
         {route === 'scenes' && <ScenesView devices={devices} onConflict={(rule, found) => setConflict({ rule, conflict: found })} onSaved={setSavedRule} onWriteError={reportWriteError} />}
         {route === 'access' && <AccessView grants={grants} onCreate={async () => { setGrants(await adapter.fetchGrants(APARTMENT_ID)); }} onWriteError={reportWriteError} />}
+        {route === 'profile' && <ProfileView profile={profile} onSave={setProfile} />}
         {route === 'building' && <BuildingView onHandover={() => setHandoverOpen(true)} />}
       </motion.div></AnimatePresence>
     </main>

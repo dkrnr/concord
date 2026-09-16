@@ -13,7 +13,7 @@ const es: Record<string, string> = {
   'brightness': 'brillo', 'open': 'abierto', 'on': 'encendido', 'off': 'apagado', 'Locked': 'Bloqueado', 'Unlocked': 'Desbloqueado',
   'Alarm': 'Alarma', 'clear': 'despejado', 'Home occupied': 'Hogar ocupado', 'Away': 'Ausente', 'climate': 'clima', 'light': 'luz', 'curtain': 'cortina', 'lock': 'cerradura',
   'Sensor · read only': 'Sensor · solo lectura', 'Lower bedroom temperature': 'Bajar temperatura del dormitorio', 'Raise bedroom temperature': 'Subir temperatura del dormitorio',
-  'Tuesday · Apartment 401': 'Martes · Apartamento 401', 'Good evening, Maria.': 'Buenas tardes, Maria.',
+  'Tuesday · Apartment 401': 'Martes · Apartamento 401', 'Good evening, {name}.': 'Buenas tardes, {name}.',
   'Your home has settled in. One choice is waiting for you.': 'Tu hogar está en calma. Hay una decisión esperándote.',
   'New scene': 'Nueva escena', 'Live home': 'Hogar en vivo', '4 rooms · 6 devices': '4 habitaciones · 6 dispositivos',
   'Evening mode': 'Modo nocturno', '3 changes active': '3 cambios activos', 'Choose room': 'Elegir habitación',
@@ -67,6 +67,11 @@ const es: Record<string, string> = {
   'Resident type': 'Tipo de residente', 'Tenant': 'Inquilino', 'Owner': 'Propietario', 'Resident name': 'Nombre del residente', 'Lease begins': 'Inicio del contrato', 'Lease ends': 'Fin del contrato',
   'Resident controls': 'Controles del residente', 'Entry, climate, lights and curtains · no operator scope': 'Entrada, clima, luces y cortinas · sin permisos de operador',
   'Activating…': 'Activando…', 'Activate at lease start': 'Activar al inicio del contrato', 'Language': 'Idioma', 'English': 'Inglés', 'Spanish': 'Español', 'Close dialog': 'Cerrar diálogo',
+  'Profile': 'Perfil', 'Open profile': 'Abrir perfil', 'Apartment 401 · Edit profile': 'Apartamento 401 · Editar perfil',
+  'Your resident profile': 'Tu perfil de residente', 'Keep the identity shown across your home controls current. Changes stay in this demo session.': 'Mantén actualizada la identidad que aparece en los controles del hogar. Los cambios duran durante esta sesión de demostración.',
+  'Profile picture': 'Foto de perfil', 'Replace picture': 'Cambiar foto', 'Choose a picture': 'Elegir una foto', 'JPG, PNG or WebP · up to 3 MB': 'JPG, PNG o WebP · hasta 3 MB',
+  'Choose a JPG, PNG or WebP image under 3 MB.': 'Elige una imagen JPG, PNG o WebP de menos de 3 MB.', 'That image could not be read. Choose another file.': 'No se pudo leer la imagen. Elige otro archivo.',
+  'Enter the resident name.': 'Escribe el nombre del residente.', 'Remove picture': 'Eliminar foto', 'Profile saved': 'Perfil guardado', 'Save profile': 'Guardar perfil',
 };
 
 type I18nValue = { language: Language; setLanguage: (value: Language) => void; t: (message: string, values?: Values) => string; locale: string };
