@@ -84,7 +84,10 @@ function handleSaveRule({ rule, resolutions = [], requestId }) {
 const routes = {
   async '/fetchDevices'(body) { return { status: 200, body: store.devices }; },
   async '/fetchRules'(body) { return { status: 200, body: store.rules }; },
-  async '/fetchGrants'(body) { return { status: 200, body: store.grants }; },
+  async '/fetchGrants'(body) {
+    const apartmentId = body.apartmentId ?? APARTMENT;
+    return { status: 200, body: store.grants.filter((g) => g.apartmentId === apartmentId) };
+  },
 
   async '/saveRule'(body) {
     if (!body.rule || !body.rule.name || !body.rule.actions?.length) {
@@ -168,11 +171,14 @@ const routes = {
 
   async '/createGrant'(body) {
     const { grant, requestId } = body;
-    if (!grant || !grant.role || !grant.actor || !grant.validFrom || !grant.validUntil) {
-      return { status: 400, body: { code: 'VALIDATION', message: 'grant requires actor, role, validFrom, validUntil.', retryable: false } };
+    if (!grant || !grant.apartmentId || !grant.role || !grant.actor || !grant.validFrom || !grant.validUntil) {
+      return { status: 400, body: { code: 'VALIDATION', message: 'grant requires apartmentId, actor, role, validFrom, validUntil.', retryable: false } };
     }
     if (requestId && store.requestCache.has(requestId)) return { status: 200, body: store.requestCache.get(requestId) };
-    const saved = { ...grant, id: nextId('grant'), apartmentId: APARTMENT };
+    // Handover: honor the apartment and owner/tenant actor from the request -- never
+    // force the demo apartment. Lease dates (validFrom/validUntil) come from the caller
+    // and the grant auto-expires at validUntil (checked at use time, e.g. hasActiveGrantForUnlock).
+    const saved = { ...grant, id: nextId('grant') };
     store.grants = [saved, ...store.grants];
     if (requestId) store.requestCache.set(requestId, saved);
     return { status: 200, body: saved };
