@@ -248,6 +248,14 @@ function RuleReceipt({ rule, devices, conflicts, onChange }: { rule: Rule; devic
 function ScenesView({ devices, onConflict, onSaved, onWriteError }: { devices: Device[]; onConflict: (rule: Rule, conflict: Conflict) => void; onSaved: (rule: Rule) => void; onWriteError: (error: unknown) => void }) {
   const { t } = useI18n();
   const [sentence, setSentence] = useState(() => t('Make it comfortable when I sleep'));
+  const [builder, setBuilder] = useState(false);
+  const [manualName, setManualName] = useState('Evening comfort');
+  const [manualTrigger, setManualTrigger] = useState<'time' | 'occupancy.changed' | 'motion.detected'>('time');
+  const [manualTime, setManualTime] = useState('18:30');
+  const [manualCondition, setManualCondition] = useState<'none' | 'occupied_false' | 'occupied_true' | 'hallway'>('none');
+  const controllable = devices.filter((device) => ['light','ac','lock','curtain'].includes(device.type));
+  const [manualDeviceId, setManualDeviceId] = useState(() => controllable[0]?.id ?? '');
+  const [manualValue, setManualValue] = useState('60');
   const [proposal, setProposal] = useState<{ rule: Rule; conflicts: Conflict[] } | null>(null);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState(false);
@@ -275,14 +283,27 @@ function ScenesView({ devices, onConflict, onSaved, onWriteError }: { devices: D
     } catch (cause) { setError(errorMessage(cause)); onWriteError(cause); }
     finally { setBusy(false); }
   }
+  function buildManual(event: FormEvent) {
+    event.preventDefault();
+    const target = controllable.find((device) => device.id === manualDeviceId) ?? controllable[0];
+    if (!target) { setError(t('No controllable devices are available.')); return; }
+    const conditions: Rule['conditions'] = manualCondition === 'none' ? [] : manualCondition === 'occupied_false' ? [{ field: 'value.occupied', op: 'eq', value: false }] : manualCondition === 'occupied_true' ? [{ field: 'value.occupied', op: 'eq', value: true }] : [{ field: 'value.room', op: 'eq', value: 'hallway' }];
+    const set = target.type === 'light' ? { on: true, brightness: Number(manualValue) } : target.type === 'ac' ? { on: true, temperature: Number(manualValue) } : target.type === 'lock' ? { locked: manualValue === 'true' } : { openPercent: Number(manualValue) };
+    const rule: Rule = { id: `draft_manual_${crypto.randomUUID()}`, apartmentId: APARTMENT_ID, name: manualName.trim() || t('Manual scene'), sourceSentence: `Manual scene: ${manualName.trim()}`, trigger: manualTrigger === 'time' ? { kind: 'time', at: manualTime } : { kind: 'event', eventType: manualTrigger }, conditions, actions: [{ deviceType: target.type, deviceId: target.id, set }], enabled: true, createdAt: new Date().toISOString() };
+    setProposal({ rule, conflicts: [] }); setPreview(true); setError(null);
+  }
+  function selectManualDevice(id: string) {
+    setManualDeviceId(id);
+    const target = controllable.find((device) => device.id === id);
+    setManualValue(target?.type === 'lock' ? 'true' : target?.type === 'ac' ? '23' : target?.type === 'curtain' ? '50' : '60');
+  }
   const previewRoom = proposal ? (proposal.rule.actions[0]?.deviceId === 'all' ? 'all' : String(devices.find((device) => device.id === proposal.rule.actions[0]?.deviceId)?.state.room ?? 'all')) as Room : 'all';
   const previewAction = proposal ? actionCopy(proposal.rule, devices) : t('No proposed changes.');
   return <div className="scenes-view">
     <section className="scene-compose">
       <h1>{t('Say how you want home to feel.')}</h1><p>{t('Describe the outcome in your words. Concord will show the exact rule before anything is saved.')}</p>
-      <form className="prompt-box" onSubmit={interpret}><MessageSquareText /><textarea value={sentence} onChange={(e) => setSentence(e.target.value)} aria-label={t('Describe your scene')} /><button disabled={busy || !sentence.trim()}>{busy ? t('Understanding…') : <>{t('Make the rule')} <ArrowRight /></>}</button></form>
-      {error && <p className="inline-error" role="alert"><AlertTriangle /> {error}</p>}
-      <div className="prompt-examples"><span>{t('Try')}</span>{['Lock up when everyone leaves', 'Cool the bedroom before sleep', 'Welcome me home after sunset'].map((text) => <button key={text} onClick={() => setSentence(t(text))}>{t(text)}</button>)}</div>
+      <div className="scene-method" role="tablist" aria-label={t('Scene creation method')}><button role="tab" aria-selected={!builder} onClick={() => setBuilder(false)}><MessageSquareText />{t('Describe it')}</button><button role="tab" aria-selected={builder} onClick={() => setBuilder(true)}><SlidersHorizontal />{t('Build manually')}</button></div>
+      {!builder ? <><form className="prompt-box" onSubmit={interpret}><MessageSquareText /><textarea value={sentence} onChange={(e) => setSentence(e.target.value)} aria-label={t('Describe your scene')} /><button disabled={busy || !sentence.trim()}>{busy ? t('Understanding…') : <>{t('Make the rule')} <ArrowRight /></>}</button></form>{error && <p className="inline-error" role="alert"><AlertTriangle /> {error}</p>}<div className="prompt-examples"><span>{t('Try')}</span>{['Lock up when everyone leaves', 'Cool the bedroom before sleep', 'Welcome me home after sunset'].map((text) => <button key={text} onClick={() => setSentence(t(text))}>{t(text)}</button>)}</div></> : <form className="manual-builder" onSubmit={buildManual}><div className="manual-builder-heading"><div><h2>{t('Structured scene builder')}</h2><p>{t('Choose the trigger, optional condition and exact device action. You will review the same rule receipt before saving.')}</p></div><span>{t('Manual fallback')}</span></div><label>{t('Scene name')}<input value={manualName} onChange={(event) => setManualName(event.target.value)} maxLength={80} required /></label><div className="manual-grid"><fieldset><legend>{t('Trigger')}</legend><label>{t('Trigger type')}<select value={manualTrigger} onChange={(event) => setManualTrigger(event.target.value as typeof manualTrigger)}><option value="time">{t('At a time')}</option><option value="occupancy.changed">{t('When occupancy changes')}</option><option value="motion.detected">{t('When motion is detected')}</option></select></label>{manualTrigger === 'time' && <label>{t('Time')}<input type="time" value={manualTime} onChange={(event) => setManualTime(event.target.value)} /></label>}</fieldset><fieldset><legend>{t('Condition')}</legend><label>{t('Only if')}<select value={manualCondition} onChange={(event) => setManualCondition(event.target.value as typeof manualCondition)}><option value="none">{t('No extra conditions')}</option><option value="occupied_false">{t('Home is away')}</option><option value="occupied_true">{t('Home is occupied')}</option><option value="hallway">{t('Event room is hallway')}</option></select></label></fieldset><fieldset><legend>{t('Action')}</legend><label>{t('Device')}<select value={manualDeviceId} onChange={(event) => selectManualDevice(event.target.value)}>{controllable.map((device) => <option value={device.id} key={device.id}>{deviceName(device, t)}</option>)}</select></label>{(() => { const target = controllable.find((device) => device.id === manualDeviceId) ?? controllable[0]; if (!target) return null; return <label>{t(target.type === 'light' ? 'Brightness' : target.type === 'ac' ? 'Temperature' : target.type === 'lock' ? 'Lock state' : 'Open percent')}{target.type === 'lock' ? <select value={manualValue} onChange={(event) => setManualValue(event.target.value)}><option value="true">{t('Locked')}</option><option value="false">{t('Unlocked')}</option></select> : <input type="number" min={target.type === 'ac' ? 16 : 0} max={target.type === 'ac' ? 30 : 100} value={manualValue} onChange={(event) => setManualValue(event.target.value)} />}</label>; })()}</fieldset></div>{error && <p className="inline-error" role="alert"><AlertTriangle /> {error}</p>}<button className="primary-button"><Check />{t('Review manual rule')}</button></form>}
       <AnimatePresence mode="wait">{proposal && <motion.div key={proposal.rule.id} initial={{ opacity: 0, transform: 'translateY(12px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }} exit={{ opacity: 0 }} transition={{ duration: reduce ? .01 : .22 }}>
         <RuleReceipt rule={proposal.rule} devices={devices} conflicts={proposal.conflicts} onChange={(rule) => setProposal({ ...proposal, rule })} />
         <div className="receipt-actions"><button className="secondary-button" onClick={() => { setProposal(null); setPreview(false); }}>{t('Discard')}</button><button className="primary-button" onClick={save} disabled={busy}><Check /> {t('Check and save')}</button></div>
