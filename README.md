@@ -22,7 +22,9 @@ The existing workspace install was assembled from already-cached local packages 
 
 ## Data boundary
 
-The UI currently imports `src/data/mockAdapter.ts`. The replaceable interface is `src/data/adapter.ts`; [ADAPTER.md](ADAPTER.md) defines semantics for the engine team, including sentence interpretation, explicit rule saving, conflicts, why-card overrides, grants, SOS, and feed polling. Swap the adapter implementation when backend routes are agreed; components should not call HTTP directly.
+The UI always uses the live HTTP adapter in `src/data/httpAdapter.ts`, pointed at
+`VITE_ENGINE_URL` (default `http://localhost:8787`). [API.md](API.md) documents the
+engine surface; components call it through `src/data/adapter.ts` and never use mocks.
 
 An optional local demo engine exists under `engine/` and starts with:
 
