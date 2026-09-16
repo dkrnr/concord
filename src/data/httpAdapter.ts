@@ -1,5 +1,5 @@
 import type { ConcordAdapter, RuleProposal, RuleSaveResult, DeviceCommandResult, FeedItem } from './adapter';
-import type { CapabilityGrant, Device, NotificationItem, Rule, SosEvent, WhyCard, WhyOverride } from '../domain/contracts';
+import type { CapabilityGrant, Device, NotificationItem, Portfolio, Rule, SosEvent, WhyCard, WhyOverride } from '../domain/contracts';
 
 const BASE = import.meta.env.VITE_ENGINE_URL ?? 'http://localhost:8787';
 
@@ -52,4 +52,5 @@ export const httpAdapter: ConcordAdapter = {
   pollFeed(input, signal) { return call('/pollFeed', input, signal); },
   fetchNotifications(apartmentId, signal) { return call<NotificationItem[]>('/fetchNotifications', { apartmentId }, signal); },
   markNotificationRead(notificationId, signal) { return call('/markNotificationRead', { notificationId }, signal); },
+  fetchPortfolio(signal) { return call<Portfolio>('/fetchPortfolio', {}, signal); },
 };

@@ -98,3 +98,6 @@ export interface NotificationItem {
   timestamp: string;
   read: boolean;
 }
+
+export interface PortfolioUnit { apartmentId: string; unit: string; fleetHealth: 'healthy' | 'attention' | 'anomaly'; energyKwhToday: number; maintenanceOpen: number; maintenancePriority: 'low' | 'medium' | 'high' | null; handoverStatus: 'occupied' | 'vacant' | 'pending_handover'; occupants: number }
+export interface Portfolio { totalUnits: number; adoptionRate: number; fleetHealth: { healthy: number; attention: number; anomaly: number }; maintenance: { open: number; highPriority: number }; handover: { occupied: number; vacant: number; pending_handover: number }; energy: { totalKwhToday: number; avgKwhPerUnit: number }; units: PortfolioUnit[] }

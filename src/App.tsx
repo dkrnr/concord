@@ -3,11 +3,11 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
   Activity, AlertTriangle, ArrowRight, BellRing, Building2, CalendarDays, Check, ChevronDown, CircleHelp,
   Clock3, Copy, DoorOpen, HeartPulse, Home, KeyRound, LayoutGrid, Leaf, LockKeyhole, Menu,
-  Globe2, MessageSquareText, Moon, Plus, Radio, Share2, ShieldCheck, SlidersHorizontal, Sparkles, Sun, UserRound,
-  UsersRound, WandSparkles, X,
+  Globe2, MessageSquareText, Moon, Plus, Radio, Share2, ShieldCheck, SlidersHorizontal, Sparkles, Sun, TrendingUp, UserRound,
+  UsersRound, WandSparkles, Wrench, X, Zap,
 } from 'lucide-react';
 import { adapter } from './data';
-import type { CapabilityGrant, Conflict, Device, GrantRole, NotificationItem, Rule, SosEvent, WhyCard, WhyOverride } from './domain/contracts';
+import type { CapabilityGrant, Conflict, Device, GrantRole, NotificationItem, Portfolio, Rule, SosEvent, WhyCard, WhyOverride } from './domain/contracts';
 import { HomeScene, type Room } from './scene/HomeScene';
 import { DeviceIcon } from './components/Icons';
 import { Dialog } from './components/Dialog';
@@ -15,8 +15,8 @@ import { passPayload, qrDataUrl } from './data/passQr';
 import { applyTheme, preferredTheme, type Theme } from './theme';
 import { useI18n, type Language } from './i18n';
 
-type Route = 'home' | 'scenes' | 'access' | 'profile' | 'notifications' | 'building';
-type Role = 'resident' | 'operator';
+type Route = 'home' | 'scenes' | 'access' | 'profile' | 'notifications' | 'building' | 'developer';
+type Role = 'resident' | 'operator' | 'developer';
 type ConnectionState = 'live' | 'reconnecting' | 'stale' | 'offline';
 type ResidentProfile = { name: string; photo: string | null };
 const APARTMENT_ID = 'apt_401';
@@ -370,6 +370,27 @@ function BuildingView({ onHandover }: { onHandover: () => void }) {
     </section></div>;
 }
 
+function DeveloperView() {
+  const { t, locale } = useI18n();
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    adapter.fetchPortfolio(controller.signal).then(setPortfolio).catch((cause) => { if (!controller.signal.aborted) setError(errorMessage(cause)); });
+    return () => controller.abort();
+  }, [retry]);
+  if (error && !portfolio) return <div className="developer-view"><div className="inline-error developer-error"><AlertTriangle /><span>{error}</span><button className="text-button" onClick={() => { setError(null); setRetry((value) => value + 1); }}>{t('Retry now')}</button></div></div>;
+  if (!portfolio) return <div className="developer-view"><div className="portfolio-loading"><span /><span /><span /></div></div>;
+  const activeUnits = portfolio.handover.occupied + portfolio.handover.pending_handover;
+  const recentAlerts = portfolio.units.filter((unit) => unit.fleetHealth !== 'healthy' || unit.maintenanceOpen > 0).slice(0, 5);
+  return <div className="developer-view"><header className="developer-heading"><div><span className="eyebrow">{t('Aster portfolio')}</span><h1>{t('Every residence, one accountable view.')}</h1><p>{t('Building-level adoption, fleet condition and handover readiness. Resident behavior remains private.')}</p></div><span className="portfolio-updated"><span className="live-dot" />{t('Live engine aggregate')}</span></header>
+    <section className="portfolio-overview" aria-label={t('Portfolio overview')}><div className="portfolio-primary"><strong>{activeUnits}<small> / {portfolio.totalUnits}</small></strong><span>{t('Active units')}</span><p>{t('{rate}% portfolio adoption', { rate: Math.round(portfolio.adoptionRate * 100) })}</p></div><div className="portfolio-measures"><div><Activity /><span>{t('Fleet health')}<strong>{portfolio.fleetHealth.healthy} {t('healthy')}</strong><small>{portfolio.fleetHealth.attention} {t('attention')} · {portfolio.fleetHealth.anomaly} {t('anomaly')}</small></span></div><div><Wrench /><span>{t('Maintenance')}<strong>{portfolio.maintenance.open} {t('open items')}</strong><small>{portfolio.maintenance.highPriority} {t('high priority')}</small></span></div><div><UsersRound /><span>{t('Handover')}<strong>{portfolio.handover.pending_handover} {t('pending')}</strong><small>{portfolio.handover.vacant} {t('vacant')}</small></span></div><div><Zap /><span>{t('Energy overview')}<strong>{portfolio.energy.totalKwhToday} kWh</strong><small>{portfolio.energy.avgKwhPerUnit} {t('kWh average per unit')}</small></span></div></div></section>
+    <div className="developer-grid"><section className="portfolio-table-section"><div className="section-heading"><h2>{t('Portfolio units')}</h2><span>{portfolio.totalUnits} {t('total')}</span></div><div className="portfolio-table" role="table"><div className="portfolio-tr portfolio-th" role="row"><span>{t('Unit')}</span><span>{t('Fleet')}</span><span>{t('Handover')}</span><span>{t('Maintenance')}</span><span>{t('Energy')}</span></div>{portfolio.units.map((unit) => <div className="portfolio-tr" role="row" key={unit.apartmentId}><strong>{unit.unit}</strong><span className={`fleet-label ${unit.fleetHealth}`}><i />{t(unit.fleetHealth)}</span><span>{t(unit.handoverStatus)}</span><span>{unit.maintenanceOpen ? `${unit.maintenanceOpen} · ${t(unit.maintenancePriority ?? 'open')}` : t('Clear')}</span><span>{new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(unit.energyKwhToday)} kWh</span></div>)}</div></section>
+    <aside className="portfolio-alerts"><div className="section-heading"><h2>{t('Recent alerts')}</h2><TrendingUp /></div>{recentAlerts.length ? recentAlerts.map((unit) => <article key={unit.apartmentId}><span className={`alert-mark ${unit.fleetHealth}`}><AlertTriangle /></span><div><strong>{t('Unit {unit}', { unit: unit.unit })}</strong><p>{unit.fleetHealth === 'anomaly' ? t('Fleet anomaly requires review.') : unit.maintenanceOpen > 0 ? t('{count} maintenance items are open.', { count: unit.maintenanceOpen }) : t('Fleet health needs attention.')}</p><small>{t(unit.handoverStatus)}</small></div></article>) : <p>{t('No building alerts.')}</p>}</aside></div>
+  </div>;
+}
+
 function App() {
   const { t, language, setLanguage } = useI18n();
   const [role, setRole] = useState<Role>('resident');
@@ -573,9 +594,9 @@ function App() {
     finally { setCommandBusy(null); }
   }
 
-  function switchRole(next: Role) { setRole(next); setRoute(next === 'operator' ? 'building' : 'home'); setMobileMenu(false); }
+  function switchRole(next: Role) { setRole(next); setRoute(next === 'operator' ? 'building' : next === 'developer' ? 'developer' : 'home'); setMobileMenu(false); }
   async function triggerSos() { try { const event = await adapter.triggerSos({ apartmentId: APARTMENT_ID, requestId: crypto.randomUUID() }); setSos(event); setWriteError(null); } catch (cause) { reportWriteError(cause); throw cause; } }
-  const pageTitle = t(role === 'operator' ? 'Building' : route === 'profile' ? 'Profile' : route === 'notifications' ? 'Notifications' : NAV.find((item) => item.id === route)?.label ?? 'Home');
+  const pageTitle = t(role === 'operator' ? 'Building' : role === 'developer' ? 'Portfolio' : route === 'profile' ? 'Profile' : route === 'notifications' ? 'Notifications' : NAV.find((item) => item.id === route)?.label ?? 'Home');
 
   if (loading) return <div className="boot-screen"><BrandMark /><span>{t('Connecting to Apartment 401…')}</span></div>;
   if (loadError && devices.length === 0) return <div className="boot-screen boot-error" role="alert"><BrandMark /><strong>{t('Home engine offline')}</strong><span>{loadError}</span><button className="primary-button" onClick={() => setRetryKey((value) => value + 1)}>{t('Retry connection')}</button></div>;
@@ -584,13 +605,13 @@ function App() {
     <header className="mobile-header"><button className="brand-mobile" onClick={() => { setRoute(role === 'operator' ? 'building' : 'home'); }}><BrandMark /><span>Concord</span></button><div><button className="icon-button" onClick={toggleTheme} aria-label={t(theme === 'light' ? 'Use dark mode' : 'Use light mode')}>{theme === 'light' ? <Moon /> : <Sun />}</button><button className="emergency-compact" onClick={() => setSosOpen(true)}><HeartPulse /> {t('Emergency')}</button><button className="icon-button" onClick={() => setMobileMenu((v) => !v)} aria-label={t('Open menu')}>{mobileMenu ? <X /> : <Menu />}</button></div></header>
     <aside className={`sidebar ${mobileMenu ? 'mobile-open' : ''}`}>
       <button className="brand" onClick={() => setRoute(role === 'operator' ? 'building' : 'home')}><BrandMark /><span>Concord</span></button>
-      <button className="residence-chip" onClick={() => role === 'resident' && setRoute('profile')}><div className="residence-avatar">{role === 'resident' ? profile.photo ? <img src={profile.photo} alt="" /> : profile.name[0] : <Building2 />}</div><span><strong>{role === 'resident' ? profile.name : 'Aster Tower'}</strong><small>{role === 'resident' ? t('Apartment 401 · Edit profile') : t('Building')}</small></span></button>
-      <nav aria-label={t('Primary navigation')}>{role === 'resident' ? NAV.map(({ id, label, icon: Icon }) => <button key={id} className={route === id ? 'active' : ''} onClick={() => { setRoute(id); setMobileMenu(false); }}><Icon />{t(label)}</button>) : <button className="active"><LayoutGrid />{t('Building')}</button>}</nav>
+      <button className="residence-chip" onClick={() => role === 'resident' && setRoute('profile')}><div className="residence-avatar">{role === 'resident' ? profile.photo ? <img src={profile.photo} alt="" /> : profile.name[0] : <Building2 />}</div><span><strong>{role === 'resident' ? profile.name : role === 'developer' ? t('Concord Portfolio') : 'Aster Tower'}</strong><small>{role === 'resident' ? t('Apartment 401 · Edit profile') : t(role === 'developer' ? 'Developer overview' : 'Building')}</small></span></button>
+      <nav aria-label={t('Primary navigation')}>{role === 'resident' ? NAV.map(({ id, label, icon: Icon }) => <button key={id} className={route === id ? 'active' : ''} onClick={() => { setRoute(id); setMobileMenu(false); }}><Icon />{t(label)}</button>) : <button className="active"><LayoutGrid />{t(role === 'developer' ? 'Portfolio' : 'Building')}</button>}</nav>
       <div className="sidebar-spacer" />
       <label className="language-switch"><Globe2 /><span className="sr-only">{t('Language')}</span><select value={language} onChange={(event) => setLanguage(event.target.value as Language)}><option value="en">{t('English')}</option><option value="es">{t('Spanish')}</option></select></label>
       <button className="sidebar-utility" onClick={toggleTheme}>{theme === 'light' ? <Moon /> : <Sun />}<span>{t(theme === 'light' ? 'Dark mode' : 'Light mode')}</span></button>
       <button className="emergency-button" onClick={() => { setSosOpen(true); setMobileMenu(false); }}><HeartPulse /><span><strong>{t('Emergency')}</strong><small>{t('Get help now')}</small></span></button>
-      <div className="role-switch"><span>{t('Demo view')}</span><div><button className={role === 'resident' ? 'selected' : ''} onClick={() => switchRole('resident')}>{t('Resident')}</button><button className={role === 'operator' ? 'selected' : ''} onClick={() => switchRole('operator')}>{t('Operator')}</button></div></div>
+      <div className="role-switch"><span>{t('Demo view')}</span><div><button className={role === 'resident' ? 'selected' : ''} onClick={() => switchRole('resident')}>{t('Resident')}</button><button className={role === 'operator' ? 'selected' : ''} onClick={() => switchRole('operator')}>{t('Operator')}</button><button className={role === 'developer' ? 'selected' : ''} onClick={() => switchRole('developer')}>{t('Developer')}</button></div></div>
     </aside>
     <main className="app-content" id="main-content"><div className="desktop-topbar"><span>{pageTitle}</span><div><span className={`connection ${connection}`} role="status"><i /> {connectionCopy[connection]}</span><button className="icon-button theme-topbar" onClick={toggleTheme} aria-label={t(theme === 'light' ? 'Use dark mode' : 'Use light mode')}>{theme === 'light' ? <Moon /> : <Sun />}</button><button className="notification-button" aria-label={t('Notifications')} onClick={() => { setRole('resident'); setRoute('notifications'); void refreshNotifications(); }}><BellRing />{notifications.some((item) => !item.read) && <span className="unread-badge">{Math.min(99, notifications.filter((item) => !item.read).length)}</span>}</button><button className="avatar desktop-avatar avatar-button" onClick={() => { setRole('resident'); setRoute('profile'); }} aria-label={t('Open profile')}>{profile.photo ? <img src={profile.photo} alt="" /> : profile.name[0]}</button></div></div>
       {connection !== 'live' && <div className="connection-banner" role="status"><AlertTriangle /><span>{connectionCopy[connection]}. {t('The last confirmed home state remains visible.')}</span><button onClick={() => setRetryKey((value) => value + 1)}>{t('Retry now')}</button></div>}
@@ -601,6 +622,7 @@ function App() {
         {route === 'profile' && <ProfileView profile={profile} onSave={setProfile} />}
         {route === 'notifications' && <NotificationsView items={notifications} loading={notificationsLoading} error={notificationsError} onRetry={refreshNotifications} onMarkRead={markNotificationRead} />}
         {route === 'building' && <BuildingView onHandover={() => setHandoverOpen(true)} />}
+        {route === 'developer' && <DeveloperView />}
       </motion.div></AnimatePresence>
     </main>
     {role === 'resident' && <nav className="bottom-nav" aria-label={t('Mobile navigation')}>{NAV.map(({ id, label, icon: Icon }) => <button key={id} className={route === id ? 'active' : ''} onClick={() => setRoute(id)}><Icon /><span>{t(label)}</span></button>)}</nav>}
