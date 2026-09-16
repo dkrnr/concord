@@ -115,18 +115,46 @@ function HomeView({ devices, cards, selectedRoom, setSelectedRoom, onOverride, o
   </div>;
 }
 
-function RuleReceipt({ rule, onChangeTime }: { rule: Rule; onChangeTime: (value: string) => void }) {
-  const actionText = rule.actions.map((action) => action.deviceType === 'ac' ? `Set bedroom climate to ${action.set.temperature}°` : action.deviceType === 'curtain' ? 'Close the curtains' : 'Lock the entry').join(' · ');
+function conditionCopy(rule: Rule) {
+  if (!rule.conditions.length) return 'No extra conditions';
+  return rule.conditions.map((condition) => `${condition.field} ${condition.op} ${String(condition.value)}`).join(' · ');
+}
+
+function actionCopy(rule: Rule, devices: Device[]) {
+  return rule.actions.map((action) => {
+    const target = action.deviceId === 'all' ? `all ${action.deviceType} devices` : devices.find((device) => device.id === action.deviceId) ? deviceName(devices.find((device) => device.id === action.deviceId)!) : action.deviceId;
+    const values = Object.entries(action.set).map(([field, value]) => `${field} ${String(value)}`).join(', ');
+    return `${target}: ${values}`;
+  }).join(' · ');
+}
+
+function RuleReceipt({ rule, devices, conflicts, onChange }: { rule: Rule; devices: Device[]; conflicts: Conflict[]; onChange: (rule: Rule) => void }) {
+  function updateAction(index: number, action: Rule['actions'][number]) {
+    onChange({ ...rule, actions: rule.actions.map((current, actionIndex) => actionIndex === index ? action : current) });
+  }
   return <section className="rule-receipt">
     <div className="receipt-title"><span className="receipt-icon"><Sparkles /></span><div><span className="eyebrow">Concord understood</span><h2>{rule.name}</h2></div><span className="draft-pill">Draft</span></div>
-    <div className="rule-line"><span>When</span>{rule.trigger.kind === 'time' ? <label><span className="sr-only">Trigger time</span><input type="time" value={rule.trigger.at} onChange={(e) => onChangeTime(e.target.value)} /></label> : <strong>Everyone leaves home</strong>}</div>
-    <div className="rule-line"><span>Only if</span><strong>{rule.conditions.some((c) => c.field.includes('smoke')) ? 'No smoke alarm is active' : 'Someone is home'}</strong></div>
-    <div className="rule-line"><span>Then</span><strong>{actionText}</strong></div>
-    <p className="receipt-note"><CircleHelp /> Suggested details stay editable until you confirm.</p>
+    <div className="rule-line"><span>When</span>{rule.trigger.kind === 'time' ? <label><span className="sr-only">Trigger time</span><input type="time" value={rule.trigger.at ?? ''} onChange={(e) => onChange({ ...rule, trigger: { ...rule.trigger, at: e.target.value } })} /></label> : <strong>{rule.trigger.eventType ?? 'Unspecified event'}</strong>}</div>
+    <div className="rule-line"><span>Only if</span><strong>{conditionCopy(rule)}</strong></div>
+    <div className="rule-actions"><span>Then</span><div>{rule.actions.map((action, index) => {
+      const compatible = devices.filter((device) => device.type === action.deviceType);
+      return <fieldset className="action-editor" key={`${action.deviceType}-${index}`}><legend>{action.deviceType} action {index + 1}</legend>
+        <label>Resolved target<select aria-label={`Action ${index + 1} target`} value={action.deviceId} onChange={(event) => updateAction(index, { ...action, deviceId: event.target.value })}>
+          <option value="all">All {action.deviceType} devices · room not specified</option>
+          {action.deviceId !== 'all' && !compatible.some((device) => device.id === action.deviceId) && <option value={action.deviceId}>{action.deviceId} · unavailable target, choose a real device</option>}
+          {compatible.map((device) => <option key={device.id} value={device.id}>{deviceName(device)} · {device.id}</option>)}
+        </select></label>
+        <div className="action-settings">{Object.entries(action.set).map(([field, value]) => <label key={field}>{field}
+          {typeof value === 'boolean' ? <select aria-label={`Action ${index + 1} ${field}`} value={String(value)} onChange={(event) => updateAction(index, { ...action, set: { ...action.set, [field]: event.target.value === 'true' } })}><option value="true">On / true</option><option value="false">Off / false</option></select> : <input aria-label={`Action ${index + 1} ${field}`} type={typeof value === 'number' ? 'number' : 'text'} value={String(value)} min={field === 'temperature' ? 16 : 0} max={field === 'temperature' ? 30 : 100} onChange={(event) => updateAction(index, { ...action, set: { ...action.set, [field]: typeof value === 'number' ? Number(event.target.value) : event.target.value } })} />}
+        </label>)}</div>
+      </fieldset>;
+    })}</div></div>
+    {conflicts.length > 0 && <p className="receipt-warning"><AlertTriangle /> The engine found {conflicts.length} conflict{conflicts.length === 1 ? '' : 's'}. Edit the target or action, then confirm to check again.</p>}
+    <p className="receipt-note"><CircleHelp /> This is the engine’s exact resolution. Check the target, room and values before saving.</p>
   </section>;
 }
 
-function ScenesView({ onConflict, onSaved }: { onConflict: (rule: Rule, conflict: Conflict) => void; onSaved: (rule: Rule) => void }) {
+function ScenesView({ devices, onConflict, onSaved }: { devices: Device[]; onConflict: (rule: Rule, conflict: Conflict) => void; onSaved: (rule: Rule) => void }) {
   const [sentence, setSentence] = useState('Make it comfortable when I sleep');
   const [proposal, setProposal] = useState<{ rule: Rule; conflicts: Conflict[] } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -138,25 +166,34 @@ function ScenesView({ onConflict, onSaved }: { onConflict: (rule: Rule, conflict
     try {
       const result = await adapter.submitSentence({ apartmentId: APARTMENT_ID, sentence });
       setProposal(result); setPreview(true);
-      if (result.conflicts[0]) onConflict(result.rule, result.conflicts[0]);
     } finally { setBusy(false); }
   }
   async function save() {
     if (!proposal) return; setBusy(true);
-    try { const result = await adapter.saveRule({ rule: proposal.rule, resolutions: [], requestId: crypto.randomUUID() }); onSaved(result.rule); setProposal(null); setPreview(false); }
+    try {
+      const result = await adapter.saveRule({ rule: proposal.rule, resolutions: [], requestId: crypto.randomUUID() });
+      if (result.status === 'conflict') {
+        setProposal({ rule: result.rule, conflicts: result.conflicts });
+        if (result.conflicts[0]) onConflict(result.rule, result.conflicts[0]);
+        return;
+      }
+      onSaved(result.rule); setProposal(null); setPreview(false);
+    }
     finally { setBusy(false); }
   }
+  const previewRoom = proposal ? (proposal.rule.actions[0]?.deviceId === 'all' ? 'all' : String(devices.find((device) => device.id === proposal.rule.actions[0]?.deviceId)?.state.room ?? 'all')) as Room : 'all';
+  const previewAction = proposal ? actionCopy(proposal.rule, devices) : 'No proposed changes.';
   return <div className="scenes-view">
     <section className="scene-compose">
       <h1>Say how you want home to feel.</h1><p>Describe the outcome in your words. Concord will show the exact rule before anything is saved.</p>
       <form className="prompt-box" onSubmit={interpret}><MessageSquareText /><textarea value={sentence} onChange={(e) => setSentence(e.target.value)} aria-label="Describe your scene" /><button disabled={busy || !sentence.trim()}>{busy ? 'Understanding…' : <>Make the rule <ArrowRight /></>}</button></form>
       <div className="prompt-examples"><span>Try</span>{['Lock up when everyone leaves', 'Cool the bedroom before sleep', 'Welcome me home after sunset'].map((text) => <button key={text} onClick={() => setSentence(text)}>{text}</button>)}</div>
       <AnimatePresence mode="wait">{proposal && <motion.div key={proposal.rule.id} initial={{ opacity: 0, transform: 'translateY(12px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }} exit={{ opacity: 0 }} transition={{ duration: reduce ? .01 : .22 }}>
-        <RuleReceipt rule={proposal.rule} onChangeTime={(value) => setProposal({ ...proposal, rule: { ...proposal.rule, trigger: { ...proposal.rule.trigger, at: value } } })} />
-        {!proposal.conflicts.length && <div className="receipt-actions"><button className="secondary-button" onClick={() => { setProposal(null); setPreview(false); }}>Discard</button><button className="primary-button" onClick={save} disabled={busy}><Check /> Confirm scene</button></div>}
+        <RuleReceipt rule={proposal.rule} devices={devices} conflicts={proposal.conflicts} onChange={(rule) => setProposal({ ...proposal, rule })} />
+        <div className="receipt-actions"><button className="secondary-button" onClick={() => { setProposal(null); setPreview(false); }}>Discard</button><button className="primary-button" onClick={save} disabled={busy}><Check /> Check and save</button></div>
       </motion.div>}</AnimatePresence>
     </section>
-    <aside className="scene-preview"><div className="preview-bar"><span><span className={preview ? 'preview-dot active' : 'preview-dot'} /> {preview ? 'Preview' : 'Live state'}</span><button onClick={() => setPreview((v) => !v)} disabled={!proposal}>{preview ? 'Show live' : 'Preview rule'}</button></div><div className="preview-canvas"><HomeScene room="bedroom" preview={preview} reducedMotion={reduce} /></div><div className="preview-copy"><strong>{preview ? 'If this scene ran now' : 'Bedroom now'}</strong><p>{preview ? 'Climate settles to 23° and evening light softens.' : 'Climate is holding at 24°. No preview changes are applied.'}</p></div></aside>
+    <aside className="scene-preview"><div className="preview-bar"><span><span className={preview ? 'preview-dot active' : 'preview-dot'} /> {preview ? 'Preview' : 'Live state'}</span><button onClick={() => setPreview((v) => !v)} disabled={!proposal}>{preview ? 'Show live' : 'Preview rule'}</button></div><div className="preview-canvas"><HomeScene room={previewRoom} preview={preview} reducedMotion={reduce} /></div><div className="preview-copy"><strong>{preview ? `Proposed change · ${previewRoom === 'all' ? 'multiple rooms' : previewRoom}` : 'Live home'}</strong><p>{preview ? previewAction : 'No preview changes are applied.'}</p></div></aside>
   </div>;
 }
 
@@ -302,28 +339,22 @@ function App() {
     <main className="app-content" id="main-content"><div className="desktop-topbar"><span>{pageTitle}</span><div><span className="connection"><i /> Demo engine live</span><button className="notification-button" aria-label="Notifications"><BellRing /></button><span className="avatar desktop-avatar">M</span></div></div>
       <AnimatePresence mode="wait" initial={false}><motion.div key={`${role}-${route}`} className="route-frame" initial={reduce ? { opacity: 0 } : { opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }} exit={{ opacity: 0 }} transition={{ duration: reduce ? .01 : .18 }}>
         {route === 'home' && <HomeView devices={devices} cards={cards} selectedRoom={room} setSelectedRoom={setRoom} onOverride={override} overrideBusy={overrideBusy} onOpenScenes={() => setRoute('scenes')} />}
-        {route === 'scenes' && <ScenesView onConflict={(rule, found) => setConflict({ rule, conflict: found })} onSaved={setSavedRule} />}
+        {route === 'scenes' && <ScenesView devices={devices} onConflict={(rule, found) => setConflict({ rule, conflict: found })} onSaved={setSavedRule} />}
         {route === 'access' && <AccessView grants={grants} onCreate={(grant) => setGrants((all) => [grant, ...all])} />}
         {route === 'building' && <BuildingView onHandover={() => setHandoverOpen(true)} />}
       </motion.div></AnimatePresence>
     </main>
     {role === 'resident' && <nav className="bottom-nav" aria-label="Mobile navigation">{NAV.map(({ id, label, icon: Icon }) => <button key={id} className={route === id ? 'active' : ''} onClick={() => setRoute(id)}><Icon /><span>{label}</span></button>)}</nav>}
 
-    <ConflictDialog value={conflict} onClose={() => setConflict(null)} onSaved={(rule) => { setSavedRule(rule); setConflict(null); }} />
+    <ConflictDialog value={conflict} onClose={() => setConflict(null)} />
     <EmergencyDialog open={sosOpen} sos={sos} onClose={() => { setSosOpen(false); setSos(null); }} onTrigger={triggerSos} />
     <HandoverDialog open={handoverOpen} onClose={() => setHandoverOpen(false)} onSaved={(grant) => { setGrants((all) => [grant, ...all]); setHandoverOpen(false); }} />
     <AnimatePresence>{savedRule && <motion.div className="toast" role="status" initial={{ opacity: 0, transform: 'translateY(12px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }} exit={{ opacity: 0 }}><span><Check /></span><div><strong>Scene ready</strong><small>{savedRule.name}</small></div><button onClick={() => setSavedRule(null)} aria-label="Dismiss"><X /></button></motion.div>}</AnimatePresence>
   </div>;
 }
 
-function ConflictDialog({ value, onClose, onSaved }: { value: { rule: Rule; conflict: Conflict } | null; onClose: () => void; onSaved: (rule: Rule) => void }) {
-  const [busy, setBusy] = useState(false);
-  async function chooseSafe() {
-    if (!value) return; setBusy(true);
-    try { const result = await adapter.saveRule({ rule: value.rule, resolutions: [{ conflictId: value.conflict.id, type: 'edit_condition' }], requestId: crypto.randomUUID() }); onSaved(result.rule); }
-    finally { setBusy(false); }
-  }
-  return <Dialog open={Boolean(value)} title="Safety has the right of way" onClose={onClose} tone="danger">{value && <div className="conflict-content"><div className="safety-lock"><ShieldCheck /><span><strong>Protected rule</strong><small>Life-safety automation cannot be overridden</small></span></div><p>{value.conflict.reason}</p><div className="rule-compare"><div><span>Your new rule</span><strong>{value.rule.name}</strong><small>Locks entry when the apartment is empty</small></div><div className="conflict-vs">conflicts with</div><div className="protected"><span>Safety rule</span><strong>Unlock on smoke</strong><small>Always releases exits during an alarm</small></div></div><div className="safe-solution"><span><Check /></span><div><strong>Safe adjustment</strong><p>Add “only when no smoke alarm is active” to your new rule.</p></div></div><div className="dialog-actions"><button className="secondary-button" onClick={onClose}>Cancel</button><button className="primary-button" onClick={chooseSafe} disabled={busy}>{busy ? 'Checking…' : <>Use safe adjustment <ArrowRight /></>}</button></div></div>}</Dialog>;
+function ConflictDialog({ value, onClose }: { value: { rule: Rule; conflict: Conflict } | null; onClose: () => void }) {
+  return <Dialog open={Boolean(value)} title="This scene needs another edit" onClose={onClose} tone="danger">{value && <div className="conflict-content"><div className="safety-lock"><AlertTriangle /><span><strong>Conflict found by the engine</strong><small>No scene was saved</small></span></div><p>{value.conflict.reason}</p><div className="rule-compare"><div><span>Your edited scene</span><strong>{value.rule.name}</strong><small>{actionCopy(value.rule, [])}</small></div><div className="conflict-vs">conflicts with</div><div className="protected"><span>Existing rule</span><strong>{value.conflict.ruleB}</strong><small>The engine kept the existing rule unchanged.</small></div></div><div className="dialog-actions"><button className="primary-button" onClick={onClose}>Return to edit</button></div></div>}</Dialog>;
 }
 
 function EmergencyDialog({ open, sos, onClose, onTrigger }: { open: boolean; sos: SosEvent | null; onClose: () => void; onTrigger: () => Promise<void> }) {

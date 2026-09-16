@@ -1,4 +1,4 @@
-import type { ConcordAdapter, RuleProposal, FeedItem } from './adapter';
+import type { ConcordAdapter, RuleProposal, RuleSaveResult, FeedItem } from './adapter';
 import type { CapabilityGrant, Device, Rule, SosEvent, WhyCard, WhyOverride } from '../domain/contracts';
 
 const BASE = import.meta.env.VITE_ENGINE_URL ?? 'http://localhost:8787';
@@ -32,7 +32,7 @@ export const httpAdapter: ConcordAdapter = {
   },
 
   submitSentence(input, signal) { return call<RuleProposal>('/submitSentence', input, signal); },
-  saveRule(input, signal) { return call('/saveRule', input, signal); },
+  saveRule(input, signal) { return call<RuleSaveResult>('/saveRule', input, signal); },
   postWhyOverride(input, signal) { return call<WhyCard>('/postWhyOverride', input, signal); },
   createGrant(input, signal) { return call<CapabilityGrant>('/createGrant', input, signal); },
   triggerSos(input, signal) { return call<SosEvent>('/triggerSos', input, signal); },
