@@ -6,7 +6,7 @@ import {
   MessageSquareText, Plus, Radio, ShieldCheck, SlidersHorizontal, Sparkles, UserRound,
   UsersRound, WandSparkles, X,
 } from 'lucide-react';
-import { mockAdapter } from './data/mockAdapter';
+import { adapter } from './data';
 import type { CapabilityGrant, Conflict, Device, GrantRole, Rule, SosEvent, WhyCard, WhyOverride } from './domain/contracts';
 import { HomeScene, type Room } from './scene/HomeScene';
 import { DeviceIcon } from './components/Icons';
@@ -136,14 +136,14 @@ function ScenesView({ onConflict, onSaved }: { onConflict: (rule: Rule, conflict
     event.preventDefault(); if (!sentence.trim()) return;
     setBusy(true); setProposal(null);
     try {
-      const result = await mockAdapter.submitSentence({ apartmentId: APARTMENT_ID, sentence });
+      const result = await adapter.submitSentence({ apartmentId: APARTMENT_ID, sentence });
       setProposal(result); setPreview(true);
       if (result.conflicts[0]) onConflict(result.rule, result.conflicts[0]);
     } finally { setBusy(false); }
   }
   async function save() {
     if (!proposal) return; setBusy(true);
-    try { const result = await mockAdapter.saveRule({ rule: proposal.rule, resolutions: [], requestId: crypto.randomUUID() }); onSaved(result.rule); setProposal(null); setPreview(false); }
+    try { const result = await adapter.saveRule({ rule: proposal.rule, resolutions: [], requestId: crypto.randomUUID() }); onSaved(result.rule); setProposal(null); setPreview(false); }
     finally { setBusy(false); }
   }
   return <div className="scenes-view">
@@ -171,7 +171,7 @@ function AccessView({ grants, onCreate }: { grants: CapabilityGrant[]; onCreate:
     event.preventDefault(); setBusy(true);
     const from = new Date(); const until = new Date(from.getTime() + Number(duration) * 3_600_000);
     try {
-      const grant = await mockAdapter.createGrant({ grant: { actor: name, apartmentId: APARTMENT_ID, role, scope: ['lock.unlock'], validFrom: from.toISOString(), validUntil: until.toISOString() }, requestId: crypto.randomUUID() });
+      const grant = await adapter.createGrant({ grant: { actor: name, apartmentId: APARTMENT_ID, role, scope: ['lock.unlock'], validFrom: from.toISOString(), validUntil: until.toISOString() }, requestId: crypto.randomUUID() });
       setCreated(grant); onCreate(grant);
       setQr('/assets/pass-qr.svg');
     } finally { setBusy(false); }
@@ -222,18 +222,70 @@ function App() {
 
   useEffect(() => {
     const controller = new AbortController();
-    Promise.all([mockAdapter.fetchDevices(APARTMENT_ID, controller.signal), mockAdapter.fetchWhyCards(APARTMENT_ID, controller.signal), mockAdapter.fetchGrants(APARTMENT_ID, controller.signal)]).then(([d, c, g]) => { setDevices(d); setCards(c); setGrants(g); setLoading(false); });
+    Promise.all([adapter.fetchDevices(APARTMENT_ID, controller.signal), adapter.fetchWhyCards(APARTMENT_ID, controller.signal), adapter.fetchGrants(APARTMENT_ID, controller.signal)]).then(([d, c, g]) => { setDevices(d); setCards(c); setGrants(g); setLoading(false); });
     return () => controller.abort();
+  }, []);
+
+  // Live feed: polls pollFeed on a cursor, upserts WhyCards/SosEvents, refreshes
+  // devices after any Event batch. Starts on mount, stops on unmount.
+  useEffect(() => {
+    let cancelled = false;
+    let cursor: string | undefined;
+    let timer: number | undefined;
+    let firstCall = true;
+
+    async function poll() {
+      if (cancelled) return;
+      let nextDelay = 2000;
+      try {
+        const batch = await adapter.pollFeed({ apartmentId: APARTMENT_ID, cursor });
+        if (cancelled) return;
+
+        if (batch.reset && !firstCall) {
+          const [d, g] = await Promise.all([adapter.fetchDevices(APARTMENT_ID), adapter.fetchGrants(APARTMENT_ID)]);
+          if (cancelled) return;
+          setDevices(d);
+          setGrants(g);
+        }
+        firstCall = false;
+        cursor = batch.cursor;
+
+        const newCards = batch.items.filter((i) => i.kind === 'why_card').map((i) => i.data as WhyCard);
+        const newSos = batch.items.filter((i) => i.kind === 'sos_event').map((i) => i.data as SosEvent);
+        const hasEvents = batch.items.some((i) => i.kind === 'event');
+
+        if (newCards.length) {
+          setCards((all) => {
+            const byId = new Map(all.map((c) => [c.id, c]));
+            for (const c of newCards) byId.set(c.id, c);
+            return Array.from(byId.values());
+          });
+        }
+        if (newSos.length) setSos(newSos[newSos.length - 1]);
+        if (hasEvents) {
+          const d = await adapter.fetchDevices(APARTMENT_ID);
+          if (!cancelled) setDevices(d);
+        }
+
+        nextDelay = batch.hasMore ? 0 : 2000;
+      } catch {
+        // retryable per ADAPTER.md: keep last snapshot, try again next tick
+      }
+      if (!cancelled) timer = window.setTimeout(poll, nextDelay);
+    }
+
+    poll();
+    return () => { cancelled = true; if (timer !== undefined) window.clearTimeout(timer); };
   }, []);
 
   async function override(id: string, value: WhyOverride) {
     setOverrideBusy(id);
-    try { const updated = await mockAdapter.postWhyOverride({ whyCardId: id, override: value, requestId: crypto.randomUUID() }); setCards((all) => all.map((card) => card.id === id ? updated : card)); }
+    try { const updated = await adapter.postWhyOverride({ whyCardId: id, override: value, requestId: crypto.randomUUID() }); setCards((all) => all.map((card) => card.id === id ? updated : card)); }
     finally { setOverrideBusy(null); }
   }
 
   function switchRole(next: Role) { setRole(next); setRoute(next === 'operator' ? 'building' : 'home'); setMobileMenu(false); }
-  async function triggerSos() { const event = await mockAdapter.triggerSos({ apartmentId: APARTMENT_ID, requestId: crypto.randomUUID() }); setSos(event); }
+  async function triggerSos() { const event = await adapter.triggerSos({ apartmentId: APARTMENT_ID, requestId: crypto.randomUUID() }); setSos(event); }
   const pageTitle = role === 'operator' ? 'Building' : NAV.find((item) => item.id === route)?.label ?? 'Home';
 
   if (loading) return <div className="boot-screen"><BrandMark /><span>Preparing Apartment 401</span></div>;
@@ -268,7 +320,7 @@ function ConflictDialog({ value, onClose, onSaved }: { value: { rule: Rule; conf
   const [busy, setBusy] = useState(false);
   async function chooseSafe() {
     if (!value) return; setBusy(true);
-    try { const result = await mockAdapter.saveRule({ rule: value.rule, resolutions: [{ conflictId: value.conflict.id, type: 'edit_condition' }], requestId: crypto.randomUUID() }); onSaved(result.rule); }
+    try { const result = await adapter.saveRule({ rule: value.rule, resolutions: [{ conflictId: value.conflict.id, type: 'edit_condition' }], requestId: crypto.randomUUID() }); onSaved(result.rule); }
     finally { setBusy(false); }
   }
   return <Dialog open={Boolean(value)} title="Safety has the right of way" onClose={onClose} tone="danger">{value && <div className="conflict-content"><div className="safety-lock"><ShieldCheck /><span><strong>Protected rule</strong><small>Life-safety automation cannot be overridden</small></span></div><p>{value.conflict.reason}</p><div className="rule-compare"><div><span>Your new rule</span><strong>{value.rule.name}</strong><small>Locks entry when the apartment is empty</small></div><div className="conflict-vs">conflicts with</div><div className="protected"><span>Safety rule</span><strong>Unlock on smoke</strong><small>Always releases exits during an alarm</small></div></div><div className="safe-solution"><span><Check /></span><div><strong>Safe adjustment</strong><p>Add “only when no smoke alarm is active” to your new rule.</p></div></div><div className="dialog-actions"><button className="secondary-button" onClick={onClose}>Cancel</button><button className="primary-button" onClick={chooseSafe} disabled={busy}>{busy ? 'Checking…' : <>Use safe adjustment <ArrowRight /></>}</button></div></div>}</Dialog>;
@@ -282,7 +334,7 @@ function EmergencyDialog({ open, sos, onClose, onTrigger }: { open: boolean; sos
 
 function HandoverDialog({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: (grant: CapabilityGrant) => void }) {
   const [name, setName] = useState('Nadia Perera'); const [unit, setUnit] = useState('405'); const [start, setStart] = useState('2026-10-01'); const [end, setEnd] = useState('2027-09-30'); const [busy, setBusy] = useState(false);
-  async function submit(event: FormEvent) { event.preventDefault(); setBusy(true); try { const grant = await mockAdapter.createGrant({ grant: { actor: name, apartmentId: `apt_${unit}`, role: 'tenant', scope: ['lock.unlock','ac.control','light.control','curtain.control'], validFrom: new Date(start + 'T00:00:00+05:30').toISOString(), validUntil: new Date(end + 'T23:59:59+05:30').toISOString() }, requestId: crypto.randomUUID() }); onSaved(grant); } finally { setBusy(false); } }
+  async function submit(event: FormEvent) { event.preventDefault(); setBusy(true); try { const grant = await adapter.createGrant({ grant: { actor: name, apartmentId: `apt_${unit}`, role: 'tenant', scope: ['lock.unlock','ac.control','light.control','curtain.control'], validFrom: new Date(start + 'T00:00:00+05:30').toISOString(), validUntil: new Date(end + 'T23:59:59+05:30').toISOString() }, requestId: crypto.randomUUID() }); onSaved(grant); } finally { setBusy(false); } }
   return <Dialog open={open} title="Prepare unit handover" onClose={onClose}><form className="handover-form" onSubmit={submit}><p>Access begins with the lease and expires automatically at its end.</p><div className="form-two"><label>Unit<select value={unit} onChange={(e) => setUnit(e.target.value)}><option>405</option><option>505</option><option>604</option></select></label><label>Resident type<select><option>Tenant</option><option>Owner</option></select></label></div><label>Resident name<input value={name} onChange={(e) => setName(e.target.value)} required /></label><div className="form-two"><label>Lease begins<input type="date" value={start} onChange={(e) => setStart(e.target.value)} required /></label><label>Lease ends<input type="date" min={start} value={end} onChange={(e) => setEnd(e.target.value)} required /></label></div><div className="scope-row"><ShieldCheck /><span><strong>Resident controls</strong><small>Entry, climate, lights and curtains · no operator scope</small></span></div><div className="dialog-actions"><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button className="primary-button" disabled={busy}>{busy ? 'Activating…' : <>Activate at lease start <ArrowRight /></>}</button></div></form></Dialog>;
 }
 
