@@ -11,6 +11,7 @@ import type { CapabilityGrant, Conflict, Device, GrantRole, Rule, SosEvent, WhyC
 import { HomeScene, type Room } from './scene/HomeScene';
 import { DeviceIcon } from './components/Icons';
 import { Dialog } from './components/Dialog';
+import { passPayload, qrDataUrl } from './data/passQr';
 
 type Route = 'home' | 'scenes' | 'access' | 'building';
 type Role = 'resident' | 'operator';
@@ -34,6 +35,18 @@ const NAV = [
 
 function formatTime(value: string) {
   return new Intl.DateTimeFormat('en', { hour: 'numeric', minute: '2-digit' }).format(new Date(value));
+}
+
+type GrantState = 'pending' | 'active' | 'expired';
+function grantState(grant: CapabilityGrant, now = Date.now()): GrantState {
+  if (now < new Date(grant.validFrom).getTime()) return 'pending';
+  if (now >= new Date(grant.validUntil).getTime()) return 'expired';
+  return 'active';
+}
+
+function backupCode(grant: CapabilityGrant) {
+  const suffix = grant.id.replace(/[^a-z0-9]/gi, '').slice(-6).toUpperCase().padStart(6, '0');
+  return `C401-${suffix.slice(0, 3)}-${suffix.slice(3)}`;
 }
 
 function deviceLabel(device: Device) {
@@ -220,32 +233,36 @@ function ScenesView({ devices, onConflict, onSaved, onWriteError }: { devices: D
   </div>;
 }
 
-function AccessView({ grants, onCreate, onWriteError }: { grants: CapabilityGrant[]; onCreate: (grant: CapabilityGrant) => void; onWriteError: (error: unknown) => void }) {
+function AccessView({ grants, onCreate, onWriteError }: { grants: CapabilityGrant[]; onCreate: (grant: CapabilityGrant) => Promise<void>; onWriteError: (error: unknown) => void }) {
   const [role, setRole] = useState<GrantRole>('visitor');
   const [name, setName] = useState('Amaya');
   const [duration, setDuration] = useState('2');
-  const [qr, setQr] = useState('');
   const [created, setCreated] = useState<CapabilityGrant | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now());
+  const [copied, setCopied] = useState(false);
+  useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 30_000); return () => window.clearInterval(timer); }, []);
   async function createPass(event: FormEvent) {
     event.preventDefault(); setBusy(true); setError(null);
     const from = new Date(); const until = new Date(from.getTime() + Number(duration) * 3_600_000);
     try {
       const grant = await adapter.createGrant({ grant: { actor: name, apartmentId: APARTMENT_ID, role, scope: ['lock.unlock'], validFrom: from.toISOString(), validUntil: until.toISOString() }, requestId: crypto.randomUUID() });
-      setCreated(grant); onCreate(grant);
-      setQr('/assets/pass-qr.svg');
+      setCreated(grant); setNow(Date.now()); await onCreate(grant);
     } catch (cause) { setError(errorMessage(cause)); onWriteError(cause); }
     finally { setBusy(false); }
   }
+  const code = created ? backupCode(created) : '';
+  const qr = created ? qrDataUrl(passPayload(created.id, code)) : '';
+  async function copyCode() { if (!created) return; try { await navigator.clipboard.writeText(code); setCopied(true); window.setTimeout(() => setCopied(false), 1600); } catch { setCopied(false); } }
   return <div className="access-view"><section className="access-form"><h1>A key that knows when to leave.</h1><p>Create a pass for the right door and the right window. It expires without a reminder.</p>
     <form onSubmit={createPass} className="form-stack"><fieldset><legend>Who is it for?</legend><div className="segmented">{(['visitor','delivery','cleaner'] as GrantRole[]).map((item) => <button type="button" key={item} className={role === item ? 'selected' : ''} onClick={() => setRole(item)}>{item === 'visitor' ? <UserRound /> : item === 'delivery' ? <DoorOpen /> : <Sparkles />}{item}</button>)}</div></fieldset>
       <label>Name or service<input value={name} onChange={(e) => setName(e.target.value)} required /></label><label>Access window<select value={duration} onChange={(e) => setDuration(e.target.value)}><option value="1">Next 1 hour</option><option value="2">Next 2 hours</option><option value="4">Next 4 hours</option><option value="24">Today</option></select></label>
       <div className="scope-row"><ShieldCheck /><span><strong>Entry only</strong><small>Unlock apartment 401 · no device control</small></span></div><button className="primary-button full" disabled={busy}>{busy ? 'Creating…' : <>Create pass <ArrowRight /></>}</button>
       {error && <p className="inline-error" role="alert"><AlertTriangle /> {error}</p>}
     </form></section>
-    <aside className="pass-preview">{created ? <div className="qr-ticket"><div className="ticket-top"><BrandMark /><span>CONCORD PASS</span></div><img src={qr} alt={`QR code for ${created.actor}'s demo pass`} /><h2>{created.actor}</h2><p>{created.role} · Apartment 401</p><div className="ticket-window"><Clock3 /><span>Valid until<strong>{formatTime(created.validUntil)}</strong></span></div><small>Demo pass · secure redemption pending backend integration</small></div> : <div className="empty-pass"><KeyRound /><h2>Your pass appears here</h2><p>The QR and expiry window will be ready to share.</p></div>}
-      {grants.length > 0 && <div className="active-passes">{grants.map((grant) => <div key={grant.id}><span className="avatar">{grant.actor[0]}</span><span><strong>{grant.actor}</strong><small>{grant.role} · until {formatTime(grant.validUntil)}</small></span><span className="active-label">Active</span></div>)}</div>}</aside>
+    <aside className="pass-preview">{created ? <div className="qr-ticket"><div className="ticket-top"><BrandMark /><span>CONCORD PASS</span></div><span className={`grant-status ${grantState(created, now)}`}>{grantState(created, now)}</span><img src={qr} alt={`QR code for ${created.actor}'s demo pass`} /><h2>{created.actor}</h2><p>{created.role} · Apartment 401</p><div className="backup-code"><span>Backup code</span><button onClick={copyCode} aria-label="Copy backup code"><strong>{code}</strong><small>{copied ? 'Copied' : 'Copy'}</small></button></div><div className="ticket-window"><Clock3 /><span>{grantState(created, now) === 'pending' ? 'Valid from' : grantState(created, now) === 'expired' ? 'Expired at' : 'Valid until'}<strong>{formatTime(grantState(created, now) === 'pending' ? created.validFrom : created.validUntil)}</strong></span></div><small>Demo pass · secure redemption pending backend integration</small></div> : <div className="empty-pass"><KeyRound /><h2>Your pass appears here</h2><p>The QR, readable backup code and expiry window will be ready to share.</p></div>}
+      {grants.length > 0 && <div className="active-passes">{grants.map((grant) => { const state = grantState(grant, now); return <div key={grant.id}><span className="avatar">{grant.actor[0]}</span><span><strong>{grant.actor}</strong><small>{grant.role} · {state === 'pending' ? `from ${formatTime(grant.validFrom)}` : state === 'expired' ? `ended ${formatTime(grant.validUntil)}` : `until ${formatTime(grant.validUntil)}`}</small></span><span className={`active-label ${state}`}>{state}</span></div>; })}</div>}</aside>
   </div>;
 }
 
@@ -409,7 +426,7 @@ function App() {
       <AnimatePresence mode="wait" initial={false}><motion.div key={`${role}-${route}`} className="route-frame" initial={reduce ? { opacity: 0 } : { opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }} exit={{ opacity: 0 }} transition={{ duration: reduce ? .01 : .18 }}>
         {route === 'home' && <HomeView devices={devices} cards={cards} selectedRoom={room} setSelectedRoom={setRoom} onOverride={override} onProposal={decideProposal} overrideBusy={overrideBusy} onCommand={commandDevice} commandBusy={commandBusy} onOpenScenes={() => setRoute('scenes')} />}
         {route === 'scenes' && <ScenesView devices={devices} onConflict={(rule, found) => setConflict({ rule, conflict: found })} onSaved={setSavedRule} onWriteError={reportWriteError} />}
-        {route === 'access' && <AccessView grants={grants} onCreate={(grant) => setGrants((all) => [grant, ...all])} onWriteError={reportWriteError} />}
+        {route === 'access' && <AccessView grants={grants} onCreate={async () => { setGrants(await adapter.fetchGrants(APARTMENT_ID)); }} onWriteError={reportWriteError} />}
         {route === 'building' && <BuildingView onHandover={() => setHandoverOpen(true)} />}
       </motion.div></AnimatePresence>
     </main>
