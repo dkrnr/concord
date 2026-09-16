@@ -3,7 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
   Activity, AlertTriangle, ArrowRight, BellRing, Building2, Check, ChevronDown, CircleHelp,
   Clock3, DoorOpen, HeartPulse, Home, KeyRound, LayoutGrid, Leaf, LockKeyhole, Menu,
-  MessageSquareText, Plus, Radio, ShieldCheck, SlidersHorizontal, Sparkles, UserRound,
+  MessageSquareText, Moon, Plus, Radio, ShieldCheck, SlidersHorizontal, Sparkles, Sun, UserRound,
   UsersRound, WandSparkles, X,
 } from 'lucide-react';
 import { adapter } from './data';
@@ -12,6 +12,7 @@ import { HomeScene, type Room } from './scene/HomeScene';
 import { DeviceIcon } from './components/Icons';
 import { Dialog } from './components/Dialog';
 import { passPayload, qrDataUrl } from './data/passQr';
+import { applyTheme, preferredTheme, type Theme } from './theme';
 
 type Route = 'home' | 'scenes' | 'access' | 'building';
 type Role = 'resident' | 'operator';
@@ -303,7 +304,14 @@ function App() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [writeError, setWriteError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  const [theme, setTheme] = useState<Theme>(() => preferredTheme());
   const reduce = Boolean(useReducedMotion());
+
+  function toggleTheme() {
+    const next = theme === 'light' ? 'dark' : 'light';
+    setTheme(next);
+    applyTheme(next, true);
+  }
 
   // One synchronization loop owns bootstrap, polling, focus recovery and teardown.
   // Keeping these in one place prevents cursor races and overlapping focus polls.
@@ -466,16 +474,17 @@ function App() {
   if (loadError && devices.length === 0) return <div className="boot-screen boot-error" role="alert"><BrandMark /><strong>Home engine offline</strong><span>{loadError}</span><button className="primary-button" onClick={() => setRetryKey((value) => value + 1)}>Retry connection</button></div>;
   const connectionCopy: Record<ConnectionState, string> = { live: 'Home engine live', reconnecting: 'Reconnecting…', stale: 'Data may be stale', offline: 'Engine offline' };
   return <div className={`app-shell ${role}`}>
-    <header className="mobile-header"><button className="brand-mobile" onClick={() => { setRoute(role === 'operator' ? 'building' : 'home'); }}><BrandMark /><span>Concord</span></button><div><button className="emergency-compact" onClick={() => setSosOpen(true)}><HeartPulse /> Emergency</button><button className="icon-button" onClick={() => setMobileMenu((v) => !v)} aria-label="Open menu">{mobileMenu ? <X /> : <Menu />}</button></div></header>
+    <header className="mobile-header"><button className="brand-mobile" onClick={() => { setRoute(role === 'operator' ? 'building' : 'home'); }}><BrandMark /><span>Concord</span></button><div><button className="icon-button" onClick={toggleTheme} aria-label={`Use ${theme === 'light' ? 'dark' : 'light'} mode`}>{theme === 'light' ? <Moon /> : <Sun />}</button><button className="emergency-compact" onClick={() => setSosOpen(true)}><HeartPulse /> Emergency</button><button className="icon-button" onClick={() => setMobileMenu((v) => !v)} aria-label="Open menu">{mobileMenu ? <X /> : <Menu />}</button></div></header>
     <aside className={`sidebar ${mobileMenu ? 'mobile-open' : ''}`}>
       <button className="brand" onClick={() => setRoute(role === 'operator' ? 'building' : 'home')}><BrandMark /><span>Concord</span></button>
       <div className="residence-chip"><div className="residence-avatar">{role === 'resident' ? 'M' : <Building2 />}</div><span><strong>{role === 'resident' ? 'Maria’s home' : 'Aster Tower'}</strong><small>{role === 'resident' ? 'Apartment 401' : 'Building operations'}</small></span></div>
       <nav aria-label="Primary navigation">{role === 'resident' ? NAV.map(({ id, label, icon: Icon }) => <button key={id} className={route === id ? 'active' : ''} onClick={() => { setRoute(id); setMobileMenu(false); }}><Icon />{label}</button>) : <button className="active"><LayoutGrid />Building</button>}</nav>
       <div className="sidebar-spacer" />
+      <button className="sidebar-utility" onClick={toggleTheme}>{theme === 'light' ? <Moon /> : <Sun />}<span>{theme === 'light' ? 'Dark mode' : 'Light mode'}</span></button>
       <button className="emergency-button" onClick={() => { setSosOpen(true); setMobileMenu(false); }}><HeartPulse /><span><strong>Emergency</strong><small>Get help now</small></span></button>
       <div className="role-switch"><span>Demo view</span><div><button className={role === 'resident' ? 'selected' : ''} onClick={() => switchRole('resident')}>Resident</button><button className={role === 'operator' ? 'selected' : ''} onClick={() => switchRole('operator')}>Operator</button></div></div>
     </aside>
-    <main className="app-content" id="main-content"><div className="desktop-topbar"><span>{pageTitle}</span><div><span className={`connection ${connection}`} role="status"><i /> {connectionCopy[connection]}</span><button className="notification-button" aria-label="Notifications"><BellRing /></button><span className="avatar desktop-avatar">M</span></div></div>
+    <main className="app-content" id="main-content"><div className="desktop-topbar"><span>{pageTitle}</span><div><span className={`connection ${connection}`} role="status"><i /> {connectionCopy[connection]}</span><button className="icon-button theme-topbar" onClick={toggleTheme} aria-label={`Use ${theme === 'light' ? 'dark' : 'light'} mode`}>{theme === 'light' ? <Moon /> : <Sun />}</button><button className="notification-button" aria-label="Notifications"><BellRing /></button><span className="avatar desktop-avatar">M</span></div></div>
       {connection !== 'live' && <div className="connection-banner" role="status"><AlertTriangle /><span>{connectionCopy[connection]}. The last confirmed home state remains visible.</span><button onClick={() => setRetryKey((value) => value + 1)}>Retry now</button></div>}
       <AnimatePresence mode="wait" initial={false}><motion.div key={`${role}-${route}`} className="route-frame" initial={reduce ? { opacity: 0 } : { opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }} exit={{ opacity: 0 }} transition={{ duration: reduce ? .01 : .18 }}>
         {route === 'home' && <HomeView devices={devices} cards={cards} selectedRoom={room} setSelectedRoom={setRoom} onOverride={override} onProposal={decideProposal} overrideBusy={overrideBusy} onCommand={commandDevice} commandBusy={commandBusy} onOpenScenes={() => setRoute('scenes')} />}
