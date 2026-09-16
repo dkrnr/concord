@@ -53,6 +53,30 @@ export const mockAdapter: ConcordAdapter = {
     feed.push({ kind: 'event', data: event });
     return { event: copy(event), whyCards: [] };
   },
+  async approveWhyCard({ whyCardId }) {
+    await wait(320);
+    const card = whyCards.find((item) => item.id === whyCardId);
+    if (!card || card.status !== 'proposed') throw new Error('This proposal is no longer waiting.');
+    const rule = rules.find((item) => item.id === card.ruleId);
+    if (rule) for (const action of rule.actions) {
+      for (const device of devices.filter((item) => action.deviceId === 'all' ? item.type === action.deviceType : item.id === action.deviceId)) {
+        device.state = { ...device.state, ...action.set };
+        device.lastUpdated = now();
+      }
+    }
+    card.status = 'executed';
+    card.timestamp = now();
+    feed.push({ kind: 'why_card', data: card });
+    return copy(card);
+  },
+  async dismissWhyCard({ whyCardId }) {
+    await wait(260);
+    const card = whyCards.find((item) => item.id === whyCardId);
+    if (!card || card.status !== 'proposed') throw new Error('This proposal is no longer waiting.');
+    card.resolvedOverride = 'not_tonight';
+    feed.push({ kind: 'why_card', data: card });
+    return copy(card);
+  },
   async submitSentence({ sentence }): Promise<RuleProposal> {
     await wait(620);
     const lockIntent = /lock|door/i.test(sentence);

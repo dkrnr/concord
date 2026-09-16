@@ -24,6 +24,8 @@ export const httpAdapter: ConcordAdapter = {
   fetchRules(apartmentId, signal) { return call<Rule[]>('/fetchRules', { apartmentId }, signal); },
   fetchGrants(apartmentId, signal) { return call<CapabilityGrant[]>('/fetchGrants', { apartmentId }, signal); },
   commandDevice(input, signal) { return call<DeviceCommandResult>('/commandDevice', input, signal); },
+  approveWhyCard(input, signal) { return call<WhyCard>('/approveWhyCard', input, signal); },
+  dismissWhyCard(input, signal) { return call<WhyCard>('/dismissWhyCard', input, signal); },
 
   // Engine has no standalone fetchWhyCards route (not part of ADAPTER.md); derive
   // the initial card set from a cursor-less pollFeed bootstrap instead.

@@ -16,6 +16,8 @@ export interface ConcordAdapter {
   fetchGrants(apartmentId: string, signal?: AbortSignal): Promise<CapabilityGrant[]>;
   fetchWhyCards(apartmentId: string, signal?: AbortSignal): Promise<WhyCard[]>;
   commandDevice(input: { deviceId: string; set: Record<string, unknown>; requestId: string }, signal?: AbortSignal): Promise<DeviceCommandResult>;
+  approveWhyCard(input: { whyCardId: string; requestId: string }, signal?: AbortSignal): Promise<WhyCard>;
+  dismissWhyCard(input: { whyCardId: string; requestId: string }, signal?: AbortSignal): Promise<WhyCard>;
   submitSentence(input: { apartmentId: string; sentence: string }, signal?: AbortSignal): Promise<RuleProposal>;
   saveRule(input: { rule: Rule; resolutions: { conflictId: string; type: string }[]; requestId: string }, signal?: AbortSignal): Promise<RuleSaveResult>;
   postWhyOverride(input: { whyCardId: string; override: WhyOverride; requestId: string }, signal?: AbortSignal): Promise<WhyCard>;

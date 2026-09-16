@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { store, reset, nextId, APARTMENT, localDateString, pushFeed } from './state.js';
-import { checkConflict, fireEvent } from './rules.js';
+import { checkConflict, fireEvent, runActions } from './rules.js';
 import { SAFETY_RULE_IDS } from './seedState.js';
 import { sentenceToRule } from './llm.js';
 
@@ -207,6 +207,56 @@ const routes = {
     return { status: 200, body: result };
   },
 
+  // Approve/dismiss a WhyCard sitting in status:'proposed' (an action awaiting
+  // confirmation before it runs -- distinct from postWhyOverride, which reacts to
+  // an already-executed/alert card). Only valid on 'proposed' cards.
+  async '/approveWhyCard'(body) {
+    const { whyCardId, requestId } = body;
+    if (!whyCardId) return { status: 400, body: { code: 'VALIDATION', message: 'whyCardId is required.', retryable: false } };
+    if (requestId && store.requestCache.has(requestId)) return { status: 200, body: store.requestCache.get(requestId) };
+
+    const card = store.whyCards.find((c) => c.id === whyCardId);
+    if (!card) return { status: 404, body: { code: 'VALIDATION', message: 'This activity is no longer available.', retryable: false } };
+    if (card.status !== 'proposed') {
+      return { status: 409, body: { code: 'STALE_STATE', message: `Card is already ${card.status}, not proposed.`, retryable: false } };
+    }
+
+    const rule = store.rules.find((r) => r.id === card.ruleId);
+    if (rule) {
+      const { evidence } = runActions(rule.actions);
+      card.evidence = evidence;
+    }
+    card.status = 'executed';
+    card.timestamp = new Date().toISOString();
+    pushFeed({ kind: 'why_card', data: card });
+
+    const result = { ...card };
+    if (requestId) store.requestCache.set(requestId, result);
+    return { status: 200, body: result };
+  },
+
+  async '/dismissWhyCard'(body) {
+    const { whyCardId, requestId } = body;
+    if (!whyCardId) return { status: 400, body: { code: 'VALIDATION', message: 'whyCardId is required.', retryable: false } };
+    if (requestId && store.requestCache.has(requestId)) return { status: 200, body: store.requestCache.get(requestId) };
+
+    const card = store.whyCards.find((c) => c.id === whyCardId);
+    if (!card) return { status: 404, body: { code: 'VALIDATION', message: 'This activity is no longer available.', retryable: false } };
+    if (card.status !== 'proposed') {
+      return { status: 409, body: { code: 'STALE_STATE', message: `Card is already ${card.status}, not proposed.`, retryable: false } };
+    }
+
+    // Dismissed proposals never ran -- no device changes, matches "no device mutation
+    // on card inspection/preview" in ADAPTER.md. Suppress the rule for today only.
+    card.resolvedOverride = 'not_tonight';
+    store.notTonight.set(card.ruleId, localDateString());
+    pushFeed({ kind: 'why_card', data: card });
+
+    const result = { ...card };
+    if (requestId) store.requestCache.set(requestId, result);
+    return { status: 200, body: result };
+  },
+
   // --- debug/testing helpers, NOT part of the ADAPTER.md surface ---
   async '/debug/reset'() { reset(); return { status: 200, body: { ok: true } }; },
   async '/debug/state'() {
@@ -223,6 +273,20 @@ const routes = {
   async '/debug/fireEvent'(body) {
     if (!body.deviceId || !body.type) return { status: 400, body: { code: 'VALIDATION', message: 'deviceId and type required.' } };
     return { status: 200, body: fireEvent(body) };
+  },
+  async '/debug/proposeWhyCard'(body) {
+    const { ruleId } = body;
+    const rule = store.rules.find((r) => r.id === ruleId);
+    if (!rule) return { status: 400, body: { code: 'VALIDATION', message: `No rule ${ruleId}.` } };
+    const card = {
+      id: nextId('why'), apartmentId: APARTMENT, ruleId: rule.id, action: rule.name,
+      reason: `Proposed: "${rule.name}" is ready to run. Approve to execute now.`,
+      evidence: [], timestamp: new Date().toISOString(), status: 'proposed',
+      overrideOptions: ['keep', 'not_tonight', 'never'], resolvedOverride: null,
+    };
+    store.whyCards.push(card);
+    pushFeed({ kind: 'why_card', data: card });
+    return { status: 200, body: card };
   },
   async '/debug/checkConflict'(body) {
     if (!body.rule) return { status: 400, body: { code: 'VALIDATION', message: 'rule required.' } };

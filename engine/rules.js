@@ -58,10 +58,10 @@ function describeReason(rule, event) {
 
 // Applies a matched rule's actions as new Events. Action-events mutate devices
 // but do not re-run matching/anomaly checks (they are the engine's own doing).
-export function applyRule(rule, triggerEvent) {
+export function runActions(actions, apartmentId = APARTMENT) {
   const actionEvents = [];
   const evidence = [];
-  for (const action of rule.actions) {
+  for (const action of actions) {
     const targets = action.deviceId === 'all'
       ? store.devices.filter((d) => d.type === action.deviceType)
       : store.devices.filter((d) => d.id === action.deviceId);
@@ -72,7 +72,7 @@ export function applyRule(rule, triggerEvent) {
         type: `${action.deviceType}.changed`,
         value: action.set,
         timestamp: new Date().toISOString(),
-        apartmentId: APARTMENT,
+        apartmentId,
       };
       applyEventToDevices(actionEvent, store.devices);
       actionEvents.push(actionEvent);
@@ -82,6 +82,11 @@ export function applyRule(rule, triggerEvent) {
       }
     }
   }
+  return { actionEvents, evidence };
+}
+
+export function applyRule(rule, triggerEvent) {
+  const { actionEvents, evidence } = runActions(rule.actions);
   const whyCard = {
     id: nextId('why'),
     apartmentId: APARTMENT,

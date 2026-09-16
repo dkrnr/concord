@@ -55,8 +55,9 @@ function StatusChip({ card }: { card: WhyCard }) {
   return <span className="status-chip done"><Check /> Done</span>;
 }
 
-function WhyCardView({ card, active, onInspect, onOverride, busy }: {
-  card: WhyCard; active: boolean; onInspect: () => void; onOverride: (value: WhyOverride) => void; busy: boolean;
+function WhyCardView({ card, active, onInspect, onOverride, onProposal, busy }: {
+  card: WhyCard; active: boolean; onInspect: () => void; onOverride: (value: WhyOverride) => void;
+  onProposal: (decision: 'approve' | 'dismiss') => void; busy: boolean;
 }) {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const resolvedCopy = card.resolvedOverride === 'not_tonight' ? 'Paused until tomorrow' : card.resolvedOverride === 'never' ? 'Routine turned off' : card.resolvedOverride === 'keep' ? 'Kept as is' : null;
@@ -72,7 +73,10 @@ function WhyCardView({ card, active, onInspect, onOverride, busy }: {
         {card.evidence.map((item) => <li key={`${item.deviceId}-${item.field}`}><span>{item.field.replace('state.', '')}</span><strong>{String(item.value)}</strong></li>)}
       </motion.ul>}
     </AnimatePresence>
-    {resolvedCopy ? <div className="resolved-row"><Check /> {resolvedCopy}</div> : <div className="why-actions" onClick={(e) => e.stopPropagation()}>
+    {resolvedCopy ? <div className="resolved-row"><Check /> {resolvedCopy}</div> : card.status === 'proposed' ? <div className="why-actions proposal-actions" onClick={(e) => e.stopPropagation()}>
+      <button disabled={busy} className="primary-small" onClick={() => onProposal('approve')}>Approve</button>
+      <button disabled={busy} onClick={() => onProposal('dismiss')}>Dismiss</button>
+    </div> : <div className="why-actions" onClick={(e) => e.stopPropagation()}>
       <button disabled={busy} className="primary-small" onClick={() => onOverride('keep')}>Keep</button>
       <button disabled={busy} onClick={() => onOverride('not_tonight')}>Not tonight</button>
       <button disabled={busy} onClick={() => onOverride('never')}>Never</button>
@@ -88,9 +92,10 @@ function DeviceControls({ device, busy, onCommand }: { device: Device; busy: boo
   return <span className="read-only-device">Sensor · read only</span>;
 }
 
-function HomeView({ devices, cards, selectedRoom, setSelectedRoom, onOverride, overrideBusy, onCommand, commandBusy, onOpenScenes }: {
+function HomeView({ devices, cards, selectedRoom, setSelectedRoom, onOverride, onProposal, overrideBusy, onCommand, commandBusy, onOpenScenes }: {
   devices: Device[]; cards: WhyCard[]; selectedRoom: Room; setSelectedRoom: (room: Room) => void;
   onOverride: (id: string, value: WhyOverride) => void; overrideBusy: string | null;
+  onProposal: (id: string, decision: 'approve' | 'dismiss') => void;
   onCommand: (device: Device, set: Record<string, unknown>) => void; commandBusy: string | null; onOpenScenes: () => void;
 }) {
   const reduce = Boolean(useReducedMotion());
@@ -120,7 +125,7 @@ function HomeView({ devices, cards, selectedRoom, setSelectedRoom, onOverride, o
     <aside className="activity-panel">
       <div className="activity-heading"><div><span className="eyebrow">Why feed</span><h2>What home noticed</h2></div><span className="count-badge">{cards.filter((c) => !c.resolvedOverride).length} new</span></div>
       <p className="activity-intro">Every action comes with its reason. Correct one and Concord learns the boundary.</p>
-      <div className="timeline">{cards.map((card) => <WhyCardView key={card.id} card={card} active={card.evidence.some((e) => ROOM_BY_DEVICE[e.deviceId] === selectedRoom)} onInspect={() => setSelectedRoom(ROOM_BY_DEVICE[card.evidence[0]?.deviceId] ?? 'all')} onOverride={(value) => onOverride(card.id, value)} busy={overrideBusy === card.id} />)}</div>
+      <div className="timeline">{cards.map((card) => <WhyCardView key={card.id} card={card} active={card.evidence.some((e) => ROOM_BY_DEVICE[e.deviceId] === selectedRoom)} onInspect={() => setSelectedRoom(ROOM_BY_DEVICE[card.evidence[0]?.deviceId] ?? 'all')} onOverride={(value) => onOverride(card.id, value)} onProposal={(decision) => onProposal(card.id, decision)} busy={overrideBusy === card.id} />)}</div>
     </aside>
   </div>;
 }
@@ -332,6 +337,16 @@ function App() {
     finally { setOverrideBusy(null); }
   }
 
+  async function decideProposal(id: string, decision: 'approve' | 'dismiss') {
+    setOverrideBusy(id);
+    try {
+      const input = { whyCardId: id, requestId: crypto.randomUUID() };
+      const updated = decision === 'approve' ? await adapter.approveWhyCard(input) : await adapter.dismissWhyCard(input);
+      setCards((all) => all.map((card) => card.id === id ? updated : card));
+      if (decision === 'approve') setDevices(await adapter.fetchDevices(APARTMENT_ID));
+    } finally { setOverrideBusy(null); }
+  }
+
   async function commandDevice(device: Device, set: Record<string, unknown>) {
     setCommandBusy(device.id);
     try {
@@ -357,7 +372,7 @@ function App() {
     </aside>
     <main className="app-content" id="main-content"><div className="desktop-topbar"><span>{pageTitle}</span><div><span className="connection"><i /> Demo engine live</span><button className="notification-button" aria-label="Notifications"><BellRing /></button><span className="avatar desktop-avatar">M</span></div></div>
       <AnimatePresence mode="wait" initial={false}><motion.div key={`${role}-${route}`} className="route-frame" initial={reduce ? { opacity: 0 } : { opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }} exit={{ opacity: 0 }} transition={{ duration: reduce ? .01 : .18 }}>
-        {route === 'home' && <HomeView devices={devices} cards={cards} selectedRoom={room} setSelectedRoom={setRoom} onOverride={override} overrideBusy={overrideBusy} onCommand={commandDevice} commandBusy={commandBusy} onOpenScenes={() => setRoute('scenes')} />}
+        {route === 'home' && <HomeView devices={devices} cards={cards} selectedRoom={room} setSelectedRoom={setRoom} onOverride={override} onProposal={decideProposal} overrideBusy={overrideBusy} onCommand={commandDevice} commandBusy={commandBusy} onOpenScenes={() => setRoute('scenes')} />}
         {route === 'scenes' && <ScenesView devices={devices} onConflict={(rule, found) => setConflict({ rule, conflict: found })} onSaved={setSavedRule} />}
         {route === 'access' && <AccessView grants={grants} onCreate={(grant) => setGrants((all) => [grant, ...all])} />}
         {route === 'building' && <BuildingView onHandover={() => setHandoverOpen(true)} />}
