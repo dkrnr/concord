@@ -251,8 +251,8 @@ for a mock UI. Follow backend-security workspace rules if real backend logic is 
 - React/Vite app shell with responsive resident and operator modes.
 - Stateful Three.js apartment with whole-home and room focus, preview lighting,
   reduced-motion instant transitions, context-loss handling and a useful SVG plan fallback.
-- Contract-shaped adapter and deterministic mock engine. `ADAPTER.md` is the backend
-  handoff; components currently import `mockAdapter` until transport routes are agreed.
+- Contract-shaped adapter with deterministic mock and live HTTP implementations.
+  `VITE_ADAPTER=http` connects the shipping UI to the local engine described by `ADAPTER.md`.
 - Real local QR SVG, explicit demo wording, no third-party assets, tracking or persistence.
 - Readability floor enforced at 18px body copy and 16px controls/metadata. Measured
   contrast, C/V accounting and loading inventory are in `qa/content-audit.md`.
@@ -270,3 +270,27 @@ is self-contained and passes; normalize with `npm install --legacy-peer-deps` wh
 registry access is available. Vite reports an approximately 899kB raw / 249kB gzip main
 chunk because React, Three.js, Motion and icons ship together; no runtime failure was
 observed. Code splitting remains a post-competition optimization.
+
+## Live-engine checkpoint — 2026-09-17
+
+- Scene confirmation now renders and edits the exact engine-resolved device, room,
+  action and values. Conflict responses never show a saved receipt.
+- Light, AC, curtain and lock controls send engine commands, refetch authoritative
+  device state and drive visible lighting, curtain, climate and door changes in the
+  Three.js homescape. The complete device list remains available on mobile.
+- Proposed WhyCards expose Approve / Dismiss; executed and alert cards expose Keep /
+  Not tonight / Never. Approving runs the engine action; dismissing does not mutate devices.
+- Connection state is explicit (`live`, `reconnecting`, `stale`, `offline`) with bounded
+  2/4/8/15-second poll backoff, retained snapshots, retry UI, six-second HTTP timeouts
+  and visible write errors.
+- Visitor grants persist through the engine, refetch after creation, render real
+  grant-specific local QR codes, readable backup codes, and pending/active/expired states.
+
+Checkpoint evidence:
+
+- `qa/LIVE-AUDIT.md` records the pre-fix live-adapter audit.
+- `qa/checkpoint-manual-mobile.png`, `qa/checkpoint-proposal-decisions.png`,
+  `qa/checkpoint-connection-error.png`, and `qa/checkpoint-visitor-pass.png` record the flows.
+- `qa/final/screenshots.json` covers desktop, laptop and mobile production-preview renders.
+- `qa/motion-final/motion.json` covers temporal desktop/mobile captures, reduced motion,
+  WebGL state reporting and the forced non-canvas fallback.
