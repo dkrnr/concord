@@ -43,6 +43,16 @@ export const mockAdapter: ConcordAdapter = {
   async fetchRules() { await wait(180); return copy(rules); },
   async fetchGrants() { await wait(180); return copy(grants); },
   async fetchWhyCards() { await wait(180); return copy(whyCards); },
+  async commandDevice({ deviceId, set }) {
+    await wait(240);
+    const device = devices.find((item) => item.id === deviceId);
+    if (!device) throw new Error('Device is no longer available.');
+    device.state = { ...device.state, ...set };
+    device.lastUpdated = now();
+    const event: Event = { id: 'evt_' + Date.now(), deviceId, type: `${device.type}.changed`, value: set, timestamp: device.lastUpdated, apartmentId: device.apartmentId };
+    feed.push({ kind: 'event', data: event });
+    return { event: copy(event), whyCards: [] };
+  },
   async submitSentence({ sentence }): Promise<RuleProposal> {
     await wait(620);
     const lockIntent = /lock|door/i.test(sentence);

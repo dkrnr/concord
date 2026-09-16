@@ -191,6 +191,22 @@ const routes = {
     return { status: 200, body: sos };
   },
 
+  // Manual device command. Devices only change state via Event (CONTRACT.md), so this
+  // looks up the device, builds the same `${type}.changed` Event applyRule would emit,
+  // and routes it through fireEvent -- runs the anomaly check and any matching rules too.
+  async '/commandDevice'(body) {
+    const { deviceId, set, requestId } = body;
+    if (!deviceId || !set || typeof set !== 'object') {
+      return { status: 400, body: { code: 'VALIDATION', message: 'deviceId and set are required.', retryable: false } };
+    }
+    if (requestId && store.requestCache.has(requestId)) return { status: 200, body: store.requestCache.get(requestId) };
+    const device = store.devices.find((d) => d.id === deviceId);
+    if (!device) return { status: 404, body: { code: 'VALIDATION', message: `No device ${deviceId}.`, retryable: false } };
+    const result = fireEvent({ deviceId, type: `${device.type}.changed`, value: set });
+    if (requestId) store.requestCache.set(requestId, result);
+    return { status: 200, body: result };
+  },
+
   // --- debug/testing helpers, NOT part of the ADAPTER.md surface ---
   async '/debug/reset'() { reset(); return { status: 200, body: { ok: true } }; },
   async '/debug/state'() {

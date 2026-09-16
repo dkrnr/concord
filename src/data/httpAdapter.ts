@@ -1,4 +1,4 @@
-import type { ConcordAdapter, RuleProposal, RuleSaveResult, FeedItem } from './adapter';
+import type { ConcordAdapter, RuleProposal, RuleSaveResult, DeviceCommandResult, FeedItem } from './adapter';
 import type { CapabilityGrant, Device, Rule, SosEvent, WhyCard, WhyOverride } from '../domain/contracts';
 
 const BASE = import.meta.env.VITE_ENGINE_URL ?? 'http://localhost:8787';
@@ -23,6 +23,7 @@ export const httpAdapter: ConcordAdapter = {
   fetchDevices(apartmentId, signal) { return call<Device[]>('/fetchDevices', { apartmentId }, signal); },
   fetchRules(apartmentId, signal) { return call<Rule[]>('/fetchRules', { apartmentId }, signal); },
   fetchGrants(apartmentId, signal) { return call<CapabilityGrant[]>('/fetchGrants', { apartmentId }, signal); },
+  commandDevice(input, signal) { return call<DeviceCommandResult>('/commandDevice', input, signal); },
 
   // Engine has no standalone fetchWhyCards route (not part of ADAPTER.md); derive
   // the initial card set from a cursor-less pollFeed bootstrap instead.

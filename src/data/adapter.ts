@@ -8,12 +8,14 @@ export type FeedItem =
   | { kind: 'event'; data: Event }
   | { kind: 'why_card'; data: WhyCard }
   | { kind: 'sos_event'; data: SosEvent };
+export type DeviceCommandResult = { event: Event; whyCards: WhyCard[] };
 
 export interface ConcordAdapter {
   fetchDevices(apartmentId: string, signal?: AbortSignal): Promise<Device[]>;
   fetchRules(apartmentId: string, signal?: AbortSignal): Promise<Rule[]>;
   fetchGrants(apartmentId: string, signal?: AbortSignal): Promise<CapabilityGrant[]>;
   fetchWhyCards(apartmentId: string, signal?: AbortSignal): Promise<WhyCard[]>;
+  commandDevice(input: { deviceId: string; set: Record<string, unknown>; requestId: string }, signal?: AbortSignal): Promise<DeviceCommandResult>;
   submitSentence(input: { apartmentId: string; sentence: string }, signal?: AbortSignal): Promise<RuleProposal>;
   saveRule(input: { rule: Rule; resolutions: { conflictId: string; type: string }[]; requestId: string }, signal?: AbortSignal): Promise<RuleSaveResult>;
   postWhyOverride(input: { whyCardId: string; override: WhyOverride; requestId: string }, signal?: AbortSignal): Promise<WhyCard>;

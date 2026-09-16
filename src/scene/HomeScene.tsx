@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import type { Device } from '../domain/contracts';
 
 export type Room = 'all' | 'living' | 'bedroom' | 'entry' | 'kitchen';
 const CAMERA: Record<Room, { position: THREE.Vector3; target: THREE.Vector3; zoom: number }> = {
@@ -9,8 +10,14 @@ const CAMERA: Record<Room, { position: THREE.Vector3; target: THREE.Vector3; zoo
   entry: { position: new THREE.Vector3(9,8,-10), target: new THREE.Vector3(2.6,0,-1.9), zoom: 2.45 },
   kitchen: { position: new THREE.Vector3(8,9,-10), target: new THREE.Vector3(-2.2,0,-1.7), zoom: 2.4 },
 };
-type SceneApi={setRoom:(room:Room,instant:boolean)=>void;setPreview:(value:boolean)=>void;dispose:()=>void};
+type DeviceState={lightOn:boolean;brightness:number;curtainOpen:number;acOn:boolean;temperature:number;locked:boolean};
+type SceneApi={setRoom:(room:Room,instant:boolean)=>void;setPreview:(value:boolean)=>void;setDevices:(value:DeviceState)=>void;dispose:()=>void};
 const mat=(color:string,roughness=.78)=>new THREE.MeshStandardMaterial({color,roughness});
+function readDevices(devices:Device[]):DeviceState{
+  const find=(type:string)=>devices.find((device)=>device.type===type)?.state??{};
+  const light=find('light'),curtain=find('curtain'),ac=find('ac'),lock=find('lock');
+  return{lightOn:Boolean(light.on),brightness:Number(light.brightness??0),curtainOpen:Number(curtain.openPercent??0),acOn:Boolean(ac.on),temperature:Number(ac.temperature??24),locked:Boolean(lock.locked)};
+}
 
 function box(parent:THREE.Object3D,position:[number,number,number],scale:[number,number,number],color:string){
   const mesh=new THREE.Mesh(new THREE.BoxGeometry(...scale),mat(color));mesh.position.set(...position);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;
@@ -26,19 +33,20 @@ function createApartment(scene:THREE.Scene){
   const glows:Partial<Record<Room,THREE.Mesh<THREE.PlaneGeometry,THREE.MeshBasicMaterial>>>={};
   const glow=(room:Room,x:number,z:number,w:number,d:number)=>{const material=new THREE.MeshBasicMaterial({color:'#d7e7d8',transparent:true,opacity:.08,depthWrite:false});const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),material);mesh.rotation.x=-Math.PI/2;mesh.position.set(x,.006,z);mesh.scale.set(w,d,1);root.add(mesh);glows[room]=mesh;};
   glow('living',-2.05,1.2,3.75,3.2);glow('bedroom',2.05,1.35,3.8,2.9);glow('kitchen',-2.05,-1.95,3.75,2.65);glow('entry',2.05,-1.85,3.8,2.8);
-  const living=new THREE.Group();living.position.set(-2.1,0,1.25);root.add(living);box(living,[0,.38,.55],[2.35,.52,.88],'#79907d');box(living,[0,.76,.92],[2.35,.7,.14],'#6e856f');box(living,[-1.04,.69,.55],[.16,.64,.9],'#6e856f');box(living,[1.04,.69,.55],[.16,.64,.9],'#6e856f');box(living,[-.55,.77,.45],[.52,.15,.5],'#e7d3b9');box(living,[.65,.77,.45],[.55,.15,.5],'#b96850');box(living,[0,.28,-.65],[1.25,.16,.72],'#ae825f');box(living,[0,.11,-.65],[.12,.28,.12],'#5d5147');const rug=new THREE.Mesh(new THREE.CircleGeometry(1.15,32),mat('#cbbca8',1));rug.rotation.x=-Math.PI/2;rug.position.set(0,.012,-.7);rug.receiveShadow=true;living.add(rug);plant(living,[-1.45,0,1.55]);
+  const living=new THREE.Group();living.position.set(-2.1,0,1.25);root.add(living);box(living,[0,.38,.55],[2.35,.52,.88],'#79907d');box(living,[0,.76,.92],[2.35,.7,.14],'#6e856f');box(living,[-1.04,.69,.55],[.16,.64,.9],'#6e856f');box(living,[1.04,.69,.55],[.16,.64,.9],'#6e856f');box(living,[-.55,.77,.45],[.52,.15,.5],'#e7d3b9');box(living,[.65,.77,.45],[.55,.15,.5],'#b96850');box(living,[0,.28,-.65],[1.25,.16,.72],'#ae825f');box(living,[0,.11,-.65],[.12,.28,.12],'#5d5148');const curtainLeft=box(living,[-1.38,1.22,1.69],[.5,1.55,.08],'#8b6d5c');const curtainRight=box(living,[1.38,1.22,1.69],[.5,1.55,.08],'#8b6d5c');const rug=new THREE.Mesh(new THREE.CircleGeometry(1.15,32),mat('#cbbca8',1));rug.rotation.x=-Math.PI/2;rug.position.set(0,.012,-.7);rug.receiveShadow=true;living.add(rug);plant(living,[-1.45,0,1.55]);
   const bedroom=new THREE.Group();bedroom.position.set(2.05,0,1.55);root.add(bedroom);box(bedroom,[0,.28,.25],[2.35,.44,2.05],'#b68d68');box(bedroom,[0,.56,.25],[2.15,.18,1.85],'#f0e9dc');box(bedroom,[0,.77,1.02],[2.18,.52,.24],'#80917d');box(bedroom,[-.6,.73,.24],[.72,.15,.55],'#d6c2a9');box(bedroom,[.6,.73,.24],[.72,.15,.55],'#d6c2a9');box(bedroom,[1.42,.48,1.45],[.68,.9,.68],'#b06f54');box(bedroom,[1.42,1.02,1.45],[.48,.18,.48],'#f1d498');
   const kitchen=new THREE.Group();kitchen.position.set(-2.15,0,-1.85);root.add(kitchen);box(kitchen,[-1.2,.47,.15],[.65,.9,2.3],'#c8bda8');box(kitchen,[-.1,.47,1],[1.5,.9,.62],'#d7cebf');box(kitchen,[.7,.5,-.55],[1.3,.18,.78],'#9b7658');box(kitchen,[.7,.24,-.55],[.12,.52,.12],'#5c5148');chair(kitchen,.25,-1.15);chair(kitchen,1.25,-.5,Math.PI/2);chair(kitchen,.2,-.5,-Math.PI/2);
-  const entry=new THREE.Group();entry.position.set(2.15,0,-1.95);root.add(entry);box(entry,[1.5,1.02,.5],[.16,2.05,1.25],'#465850');box(entry,[1.35,1.02,.5],[.05,1.65,.92],'#25332f');box(entry,[-.15,.33,.15],[1.25,.48,.45],'#9a765a');plant(entry,[.25,0,1.1]);
-  const livingLight=new THREE.PointLight('#ffd9a1',5.5,5,2);livingLight.position.set(-2.1,2,1.2);scene.add(livingLight);const bedLight=new THREE.PointLight('#ffe2b8',3.8,4,2);bedLight.position.set(2.05,1.9,1.7);scene.add(bedLight);return{glows,bedLight};
+  const entry=new THREE.Group();entry.position.set(2.15,0,-1.95);root.add(entry);box(entry,[1.5,1.02,.5],[.16,2.05,1.25],'#465850');const door=box(entry,[1.35,1.02,.5],[.05,1.65,.92],'#25332f');box(entry,[-.15,.33,.15],[1.25,.48,.45],'#9a765a');plant(entry,[.25,0,1.1]);
+  const livingLight=new THREE.PointLight('#ffd9a1',5.5,5,2);livingLight.position.set(-2.1,2,1.2);scene.add(livingLight);const bedLight=new THREE.PointLight('#ffe2b8',3.8,4,2);bedLight.position.set(2.05,1.9,1.7);scene.add(bedLight);return{glows,bedLight,livingLight,curtainLeft,curtainRight,door};
 }
 
-function mount(canvas:HTMLCanvasElement,initialRoom:Room,reduced:boolean):SceneApi{
+function mount(canvas:HTMLCanvasElement,initialRoom:Room,reduced:boolean,initialDevices:DeviceState):SceneApi{
   const scene=new THREE.Scene();scene.background=new THREE.Color('#dfe7dc');scene.fog=new THREE.Fog('#dfe7dc',18,34);const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;
-  const camera=new THREE.OrthographicCamera(-5,5,5,-5,.1,100);camera.position.copy(CAMERA.all.position);camera.zoom=CAMERA.all.zoom;camera.updateProjectionMatrix();const target=CAMERA.all.target.clone();camera.lookAt(target);scene.add(new THREE.HemisphereLight('#fff6e9','#9aa79d',2.1));const sun=new THREE.DirectionalLight('#fff3dd',3.2);sun.position.set(-4,12,7);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{near:.1,far:30,left:-8,right:8,top:8,bottom:-8});scene.add(sun);const{glows,bedLight}=createApartment(scene);
-  let desiredRoom=initialRoom,preview=false,disposed=false,frame=0,viewportBoost=1,verticalShift=.12;const resize=()=>{const width=canvas.clientWidth,height=canvas.clientHeight;if(!width||!height)return;viewportBoost=width<520?.82:.86;verticalShift=width<520?.06:.12;renderer.setSize(width,height,false);const span=5.2;camera.left=-span*(width/height);camera.right=span*(width/height);camera.top=span;camera.bottom=-span;camera.updateProjectionMatrix();};const observer=new ResizeObserver(resize);observer.observe(canvas);resize();
-  const draw=()=>{if(disposed)return;const desired=CAMERA[desiredRoom],speed=reduced?1:.075;camera.position.lerp(desired.position,speed);target.lerp(desired.target,speed);camera.zoom=THREE.MathUtils.lerp(camera.zoom,desired.zoom*viewportBoost,speed);camera.updateProjectionMatrix();camera.projectionMatrix.elements[13]+=verticalShift;camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();camera.lookAt(target);for(const[name,mesh]of Object.entries(glows))mesh!.material.opacity=THREE.MathUtils.lerp(mesh!.material.opacity,(desiredRoom==='all'||desiredRoom===name)?.5:.07,reduced?1:.11);if(glows.bedroom)glows.bedroom.material.color.set(preview?'#f0c47b':'#d7e7d8');bedLight.color.set(preview?'#f5bb68':'#ffe2b8');bedLight.intensity=THREE.MathUtils.lerp(bedLight.intensity,preview?6:3.8,.1);renderer.render(scene,camera);frame=requestAnimationFrame(draw);};draw();
-  return{setRoom(room,instant){desiredRoom=room;if(instant){camera.position.copy(CAMERA[room].position);target.copy(CAMERA[room].target);camera.zoom=CAMERA[room].zoom*viewportBoost;}},setPreview(value){preview=value;},dispose(){disposed=true;cancelAnimationFrame(frame);observer.disconnect();scene.traverse((object)=>{if(object instanceof THREE.Mesh){object.geometry.dispose();(Array.isArray(object.material)?object.material:[object.material]).forEach((value)=>value.dispose());}});renderer.dispose();}};
+  const camera=new THREE.OrthographicCamera(-5,5,5,-5,.1,100);camera.position.copy(CAMERA.all.position);camera.zoom=CAMERA.all.zoom;camera.updateProjectionMatrix();const target=CAMERA.all.target.clone();camera.lookAt(target);scene.add(new THREE.HemisphereLight('#fff6e9','#9aa79d',2.1));const sun=new THREE.DirectionalLight('#fff3dd',3.2);sun.position.set(-4,12,7);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{near:.1,far:30,left:-8,right:8,top:8,bottom:-8});scene.add(sun);const{glows,bedLight,livingLight,curtainLeft,curtainRight,door}=createApartment(scene);
+  let desiredRoom=initialRoom,preview=false,deviceState=initialDevices,disposed=false,frame=0,viewportBoost=1,verticalShift=.12;const resize=()=>{const width=canvas.clientWidth,height=canvas.clientHeight;if(!width||!height)return;viewportBoost=width<520?.82:.86;verticalShift=width<520?.06:.12;renderer.setSize(width,height,false);const span=5.2;camera.left=-span*(width/height);camera.right=span*(width/height);camera.top=span;camera.bottom=-span;camera.updateProjectionMatrix();};const observer=new ResizeObserver(resize);observer.observe(canvas);resize();
+  const lockedColor=new THREE.Color('#25332f'),unlockedColor=new THREE.Color('#b96850');
+  const draw=()=>{if(disposed)return;const desired=CAMERA[desiredRoom],speed=reduced?1:.075;camera.position.lerp(desired.position,speed);target.lerp(desired.target,speed);camera.zoom=THREE.MathUtils.lerp(camera.zoom,desired.zoom*viewportBoost,speed);camera.updateProjectionMatrix();camera.projectionMatrix.elements[13]+=verticalShift;camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();camera.lookAt(target);for(const[name,mesh]of Object.entries(glows))mesh!.material.opacity=THREE.MathUtils.lerp(mesh!.material.opacity,(desiredRoom==='all'||desiredRoom===name)?.5:.07,reduced?1:.11);if(glows.bedroom)glows.bedroom.material.color.set(preview?'#f0c47b':deviceState.acOn?'#d3e8ea':'#d7e7d8');const liveLight=deviceState.lightOn?.35+Math.max(0,Math.min(100,deviceState.brightness))/100*6:.08;livingLight.intensity=THREE.MathUtils.lerp(livingLight.intensity,liveLight,reduced?1:.12);bedLight.color.set(preview?'#f5bb68':deviceState.acOn?'#bcdcff':'#ffe2b8');bedLight.intensity=THREE.MathUtils.lerp(bedLight.intensity,preview?6:deviceState.acOn?Math.max(2.4,(30-deviceState.temperature)*.45):.25,reduced?1:.1);const closed=1-Math.max(0,Math.min(100,deviceState.curtainOpen))/100;const curtainScale=.25+closed*1.65;curtainLeft.scale.x=THREE.MathUtils.lerp(curtainLeft.scale.x,curtainScale,reduced?1:.12);curtainRight.scale.x=THREE.MathUtils.lerp(curtainRight.scale.x,curtainScale,reduced?1:.12);curtainLeft.position.x=THREE.MathUtils.lerp(curtainLeft.position.x,-1.38+closed*.55,reduced?1:.12);curtainRight.position.x=THREE.MathUtils.lerp(curtainRight.position.x,1.38-closed*.55,reduced?1:.12);(door.material as THREE.MeshStandardMaterial).color.lerp(deviceState.locked?lockedColor:unlockedColor,reduced?1:.12);renderer.render(scene,camera);frame=requestAnimationFrame(draw);};draw();
+  return{setRoom(room,instant){desiredRoom=room;if(instant){camera.position.copy(CAMERA[room].position);target.copy(CAMERA[room].target);camera.zoom=CAMERA[room].zoom*viewportBoost;}},setPreview(value){preview=value;},setDevices(value){deviceState=value;},dispose(){disposed=true;cancelAnimationFrame(frame);observer.disconnect();scene.traverse((object)=>{if(object instanceof THREE.Mesh){object.geometry.dispose();(Array.isArray(object.material)?object.material:[object.material]).forEach((value)=>value.dispose());}});renderer.dispose();}};
 }
 
 function FallbackPlan({ room, preview }: { room: Room; preview: boolean }) {
@@ -56,7 +64,7 @@ function FallbackPlan({ room, preview }: { room: Room; preview: boolean }) {
   </div>;
 }
 
-export function HomeScene({room,preview,reducedMotion}:{room:Room;preview:boolean;reducedMotion:boolean}){
+export function HomeScene({room,preview,reducedMotion,devices=[]}:{room:Room;preview:boolean;reducedMotion:boolean;devices?:Device[]}){
   const forcedFallback = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('renderer') === 'fallback';
   const [fallback, setFallback] = useState(forcedFallback);
   const canvas=useRef<HTMLCanvasElement>(null),api=useRef<SceneApi|null>(null);
@@ -65,16 +73,17 @@ export function HomeScene({room,preview,reducedMotion}:{room:Room;preview:boolea
     const node=canvas.current;
     const lose=()=>setFallback(true);
     node.addEventListener('webglcontextlost',lose);
-    try { api.current=mount(node,room,reducedMotion); }
+    try { api.current=mount(node,room,reducedMotion,readDevices(devices)); }
     catch { setFallback(true); }
     return()=>{node.removeEventListener('webglcontextlost',lose);api.current?.dispose();api.current=null;};
   },[reducedMotion,fallback]);
   useEffect(()=>api.current?.setRoom(room,reducedMotion),[room,reducedMotion]);
   useEffect(()=>api.current?.setPreview(preview),[preview]);
+  useEffect(()=>api.current?.setDevices(readDevices(devices)),[devices]);
   useEffect(()=>{
     const root=window as typeof window & {__STUDIO_QA__?:{snapshot:()=>unknown}};
-    root.__STUDIO_QA__={snapshot:()=>({renderer:fallback?'fallback':'webgl',room,preview,reducedMotion})};
+    root.__STUDIO_QA__={snapshot:()=>({renderer:fallback?'fallback':'webgl',room,preview,reducedMotion,devices:readDevices(devices)})};
     return()=>{delete root.__STUDIO_QA__;};
-  },[fallback,room,preview,reducedMotion]);
+  },[fallback,room,preview,reducedMotion,devices]);
   return fallback ? <FallbackPlan room={room} preview={preview} /> : <canvas ref={canvas} className="home-canvas" aria-label={`Architectural view focused on ${room==='all'?'the whole home':room}`} />;
 }

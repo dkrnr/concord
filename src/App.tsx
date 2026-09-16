@@ -80,9 +80,18 @@ function WhyCardView({ card, active, onInspect, onOverride, busy }: {
   </article>;
 }
 
-function HomeView({ devices, cards, selectedRoom, setSelectedRoom, onOverride, overrideBusy, onOpenScenes }: {
+function DeviceControls({ device, busy, onCommand }: { device: Device; busy: boolean; onCommand: (device: Device, set: Record<string, unknown>) => void }) {
+  if (device.type === 'light') return <div className="device-controls"><button disabled={busy} onClick={() => onCommand(device, { on: !Boolean(device.state.on), brightness: Number(device.state.brightness ?? 60) })}>{device.state.on ? 'Turn off' : 'Turn on'}</button></div>;
+  if (device.type === 'ac') return <div className="device-controls"><button disabled={busy} onClick={() => onCommand(device, { on: !Boolean(device.state.on) })}>{device.state.on ? 'Turn off' : 'Turn on'}</button><button disabled={busy} aria-label="Lower bedroom temperature" onClick={() => onCommand(device, { on: true, temperature: Math.max(16, Number(device.state.temperature ?? 24) - 1) })}>−</button><button disabled={busy} aria-label="Raise bedroom temperature" onClick={() => onCommand(device, { on: true, temperature: Math.min(30, Number(device.state.temperature ?? 24) + 1) })}>+</button></div>;
+  if (device.type === 'curtain') return <div className="device-controls"><button disabled={busy} onClick={() => onCommand(device, { openPercent: 0 })}>Close</button><button disabled={busy} onClick={() => onCommand(device, { openPercent: 100 })}>Open</button></div>;
+  if (device.type === 'lock') return <div className="device-controls"><button disabled={busy} onClick={() => onCommand(device, { locked: !Boolean(device.state.locked) })}>{device.state.locked ? 'Unlock' : 'Lock'}</button></div>;
+  return <span className="read-only-device">Sensor · read only</span>;
+}
+
+function HomeView({ devices, cards, selectedRoom, setSelectedRoom, onOverride, overrideBusy, onCommand, commandBusy, onOpenScenes }: {
   devices: Device[]; cards: WhyCard[]; selectedRoom: Room; setSelectedRoom: (room: Room) => void;
-  onOverride: (id: string, value: WhyOverride) => void; overrideBusy: string | null; onOpenScenes: () => void;
+  onOverride: (id: string, value: WhyOverride) => void; overrideBusy: string | null;
+  onCommand: (device: Device, set: Record<string, unknown>) => void; commandBusy: string | null; onOpenScenes: () => void;
 }) {
   const reduce = Boolean(useReducedMotion());
   return <div className="home-view">
@@ -91,7 +100,7 @@ function HomeView({ devices, cards, selectedRoom, setSelectedRoom, onOverride, o
       <div className="home-stage">
         <div className="stage-heading"><div><span className="live-dot" /> Live home</div><span>4 rooms · 6 devices</span></div>
         <div className="scene-wrap">
-          <HomeScene room={selectedRoom} preview={false} reducedMotion={reduce} />
+          <HomeScene room={selectedRoom} preview={false} reducedMotion={reduce} devices={devices} />
           <div className="scene-caption"><Leaf /><span>Evening mode</span><strong>3 changes active</strong></div>
         </div>
         <div className="room-tabs" role="tablist" aria-label="Choose room">
@@ -101,9 +110,10 @@ function HomeView({ devices, cards, selectedRoom, setSelectedRoom, onOverride, o
       <section className="devices-section">
         <div className="section-heading"><div><h2>Home state</h2></div><button className="text-button"><SlidersHorizontal /> All devices</button></div>
         <div className="device-grid">
-          {devices.map((device) => <button className="device-item" key={device.id} onClick={() => setSelectedRoom(ROOM_BY_DEVICE[device.id] ?? 'all')}>
-            <span className={`device-icon ${device.type}`}><DeviceIcon type={device.type} /></span><span><strong>{deviceName(device)}</strong><small>{deviceLabel(device)}</small></span><span className="device-state-dot" />
-          </button>)}
+          {devices.map((device) => <article className="device-item" key={device.id}>
+            <button className="device-summary" onClick={() => setSelectedRoom(ROOM_BY_DEVICE[device.id] ?? 'all')}><span className={`device-icon ${device.type}`}><DeviceIcon type={device.type} /></span><span><strong>{deviceName(device)}</strong><small>{deviceLabel(device)}</small></span><span className="device-state-dot" /></button>
+            <DeviceControls device={device} busy={commandBusy === device.id} onCommand={onCommand} />
+          </article>)}
         </div>
       </section>
     </section>
@@ -193,7 +203,7 @@ function ScenesView({ devices, onConflict, onSaved }: { devices: Device[]; onCon
         <div className="receipt-actions"><button className="secondary-button" onClick={() => { setProposal(null); setPreview(false); }}>Discard</button><button className="primary-button" onClick={save} disabled={busy}><Check /> Check and save</button></div>
       </motion.div>}</AnimatePresence>
     </section>
-    <aside className="scene-preview"><div className="preview-bar"><span><span className={preview ? 'preview-dot active' : 'preview-dot'} /> {preview ? 'Preview' : 'Live state'}</span><button onClick={() => setPreview((v) => !v)} disabled={!proposal}>{preview ? 'Show live' : 'Preview rule'}</button></div><div className="preview-canvas"><HomeScene room={previewRoom} preview={preview} reducedMotion={reduce} /></div><div className="preview-copy"><strong>{preview ? `Proposed change · ${previewRoom === 'all' ? 'multiple rooms' : previewRoom}` : 'Live home'}</strong><p>{preview ? previewAction : 'No preview changes are applied.'}</p></div></aside>
+    <aside className="scene-preview"><div className="preview-bar"><span><span className={preview ? 'preview-dot active' : 'preview-dot'} /> {preview ? 'Preview' : 'Live state'}</span><button onClick={() => setPreview((v) => !v)} disabled={!proposal}>{preview ? 'Show live' : 'Preview rule'}</button></div><div className="preview-canvas"><HomeScene room={previewRoom} preview={preview} reducedMotion={reduce} devices={devices} /></div><div className="preview-copy"><strong>{preview ? `Proposed change · ${previewRoom === 'all' ? 'multiple rooms' : previewRoom}` : 'Live home'}</strong><p>{preview ? previewAction : 'No preview changes are applied.'}</p></div></aside>
   </div>;
 }
 
@@ -249,6 +259,7 @@ function App() {
   const [room, setRoom] = useState<Room>('all');
   const [loading, setLoading] = useState(true);
   const [overrideBusy, setOverrideBusy] = useState<string | null>(null);
+  const [commandBusy, setCommandBusy] = useState<string | null>(null);
   const [conflict, setConflict] = useState<{ rule: Rule; conflict: Conflict } | null>(null);
   const [savedRule, setSavedRule] = useState<Rule | null>(null);
   const [sosOpen, setSosOpen] = useState(false);
@@ -321,6 +332,14 @@ function App() {
     finally { setOverrideBusy(null); }
   }
 
+  async function commandDevice(device: Device, set: Record<string, unknown>) {
+    setCommandBusy(device.id);
+    try {
+      await adapter.commandDevice({ deviceId: device.id, set, requestId: crypto.randomUUID() });
+      setDevices(await adapter.fetchDevices(APARTMENT_ID));
+    } finally { setCommandBusy(null); }
+  }
+
   function switchRole(next: Role) { setRole(next); setRoute(next === 'operator' ? 'building' : 'home'); setMobileMenu(false); }
   async function triggerSos() { const event = await adapter.triggerSos({ apartmentId: APARTMENT_ID, requestId: crypto.randomUUID() }); setSos(event); }
   const pageTitle = role === 'operator' ? 'Building' : NAV.find((item) => item.id === route)?.label ?? 'Home';
@@ -338,7 +357,7 @@ function App() {
     </aside>
     <main className="app-content" id="main-content"><div className="desktop-topbar"><span>{pageTitle}</span><div><span className="connection"><i /> Demo engine live</span><button className="notification-button" aria-label="Notifications"><BellRing /></button><span className="avatar desktop-avatar">M</span></div></div>
       <AnimatePresence mode="wait" initial={false}><motion.div key={`${role}-${route}`} className="route-frame" initial={reduce ? { opacity: 0 } : { opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }} exit={{ opacity: 0 }} transition={{ duration: reduce ? .01 : .18 }}>
-        {route === 'home' && <HomeView devices={devices} cards={cards} selectedRoom={room} setSelectedRoom={setRoom} onOverride={override} overrideBusy={overrideBusy} onOpenScenes={() => setRoute('scenes')} />}
+        {route === 'home' && <HomeView devices={devices} cards={cards} selectedRoom={room} setSelectedRoom={setRoom} onOverride={override} overrideBusy={overrideBusy} onCommand={commandDevice} commandBusy={commandBusy} onOpenScenes={() => setRoute('scenes')} />}
         {route === 'scenes' && <ScenesView devices={devices} onConflict={(rule, found) => setConflict({ rule, conflict: found })} onSaved={setSavedRule} />}
         {route === 'access' && <AccessView grants={grants} onCreate={(grant) => setGrants((all) => [grant, ...all])} />}
         {route === 'building' && <BuildingView onHandover={() => setHandoverOpen(true)} />}
