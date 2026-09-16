@@ -1,0 +1,77 @@
+{
+  "url": "http://127.0.0.1:4192/",
+  "mode": "static",
+  "capturedAt": "2026-09-16T15:25:47.725Z",
+  "visualApproval": "Requires inspection of images; not assigned by this script.",
+  "cases": [
+    {
+      "viewport": "desktop",
+      "errors": [],
+      "resourceFailures": [],
+      "snapshots": [
+        {
+          "label": "settled",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        }
+      ]
+    },
+    {
+      "viewport": "laptop",
+      "errors": [],
+      "resourceFailures": [],
+      "snapshots": [
+        {
+          "label": "settled",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        }
+      ]
+    },
+    {
+      "viewport": "mobile",
+      "errors": [],
+      "resourceFailures": [],
+      "snapshots": [
+        {
+          "label": "settled",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        }
+      ]
+    }
+  ]
+}

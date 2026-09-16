@@ -1,0 +1,334 @@
+{
+  "url": "http://127.0.0.1:4192/",
+  "mode": "motion",
+  "capturedAt": "2026-09-16T15:26:08.170Z",
+  "motionApproval": "Not assigned. Inspect frames/video and add site-specific assertions.",
+  "cases": [
+    {
+      "viewport": "desktop",
+      "errors": [],
+      "resourceFailures": [],
+      "snapshots": [
+        {
+          "label": "initial",
+          "scene": null,
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 0,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "time-0400",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "time-1400",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "pointer-left",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "pointer-right",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "scroll-mid",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 205,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "scroll-end",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 433,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "scroll-reverse",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 91,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "return-top",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        }
+      ],
+      "unchecked": [
+        "Site-specific click/drag/touch gestures",
+        "Keyboard and pause controls",
+        "Real-device GPU performance",
+        "Visual quality and continuous playback feel"
+      ],
+      "liveRenderer": "Reported by page; inspect captured output to verify.",
+      "video": "page@219df10aeb429a4671777280afa54bea.webm"
+    },
+    {
+      "viewport": "mobile",
+      "errors": [],
+      "resourceFailures": [],
+      "snapshots": [
+        {
+          "label": "initial",
+          "scene": null,
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 0,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "time-0400",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "time-1400",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "scroll-mid",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 349,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "scroll-end",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 736,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "scroll-reverse",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 155,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "return-top",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        }
+      ],
+      "unchecked": [
+        "Site-specific click/drag/touch gestures",
+        "Keyboard and pause controls",
+        "Real-device GPU performance",
+        "Visual quality and continuous playback feel"
+      ],
+      "liveRenderer": "Reported by page; inspect captured output to verify.",
+      "video": "page@1c9dbb2d6a043ae5145790a0492a33ac.webm"
+    },
+    {
+      "viewport": "desktop",
+      "errors": [],
+      "resourceFailures": [],
+      "snapshots": [
+        {
+          "label": "reduced",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": true
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": true,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        }
+      ],
+      "variant": "reduced",
+      "variantVerification": "Requires visual and site-specific behavioral inspection."
+    },
+    {
+      "viewport": "desktop",
+      "errors": [],
+      "resourceFailures": [],
+      "snapshots": [
+        {
+          "label": "fallback",
+          "scene": {
+            "renderer": "fallback",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 0,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        }
+      ],
+      "variant": "fallback",
+      "variantVerification": "Requires visual and site-specific behavioral inspection."
+    }
+  ]
+}
