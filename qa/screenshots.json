@@ -1,7 +1,7 @@
 {
-  "url": "http://127.0.0.1:4192/",
+  "url": "http://127.0.0.1:5190/",
   "mode": "static",
-  "capturedAt": "2026-09-16T15:25:47.725Z",
+  "capturedAt": "2026-09-16T23:41:26.085Z",
   "visualApproval": "Requires inspection of images; not assigned by this script.",
   "cases": [
     {
@@ -15,7 +15,15 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
           "scrollY": 0,
@@ -38,7 +46,15 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
           "scrollY": 0,
@@ -61,7 +77,15 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
           "scrollY": 0,

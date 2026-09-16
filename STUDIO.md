@@ -307,3 +307,46 @@ Checkpoint evidence:
 - `qa/final/screenshots.json` covers desktop, laptop and mobile production-preview renders.
 - `qa/motion-final/motion.json` covers temporal desktop/mobile captures, reduced motion,
   WebGL state reporting and the forced non-canvas fallback.
+
+## Resident, visitor and developer feature suite — 2026-09-17
+
+The existing resident/operator experience and live automation loop remain intact. The
+suite was delivered as one reviewable commit per requested feature:
+
+- `eb996ad`: system-aware light/dark theme with an explicit persisted choice.
+- `f5b9a50`: English/Spanish i18n provider, switcher and externalized visible UI copy.
+- `055119c`: session-only resident name and local profile-picture editing.
+- `6c1edea`: live `/fetchNotifications` feed, unread badges and `/markNotificationRead`.
+- `942be52`: dated and weekly recurring grants through `/createGrant`, plus native share
+  with clipboard fallback and explicit backend-redemption wording.
+- `c4028e8`: isolated `/visitor-pass/:grantId` view with pass, QR, destination, window and
+  pending/active/expired state; it exposes no resident controls or resident profile data.
+- `1c2a793`: Developer role backed by `/fetchPortfolio`, limited to building aggregates,
+  fleet/maintenance/handover/energy summaries and recent building alerts.
+- `aa98fc5`: structured Trigger / Condition / Action builder using the same editable Rule
+  receipt, conflict check and `/saveRule` path as natural-language scenes.
+
+Integration adds a mobile notification entry point, responsive layouts for every new
+screen, and shorter ease-out loading/status signals. Theme and language are the only
+persisted client preferences, explicitly requested for this demo; profile image/name stay
+in React memory. The shipped HTTP adapter remains mandatory (`26de6e1`); no mock fallback
+was introduced.
+
+Verification against `http://127.0.0.1:8790` and the production preview:
+
+- Playwright exercised theme persistence, English/Spanish switching, profile/photo update,
+  notification read state, a Saturday 17:00–21:00 recurring grant, isolated visitor view,
+  live developer portfolio, a manual curtain rule saved through the engine, and the existing
+  bedroom AC natural-language path. All passed.
+- Direct `/submitSentence` checks: bedroom AC resolved to `dev_ac_bedroom` with HTTP 200;
+  kitchen lights and vague input returned `NEEDS_CLARIFICATION` with HTTP 422 and created,
+  saved and executed nothing.
+- `npm test`, `npm run build`, the anti-slop scan and motion audit pass. Vite still reports
+  the already-known large main-chunk warning.
+- `qa/screenshots.json` records clean desktop/laptop/mobile captures with no broken resources
+  or horizontal overflow. `qa/motion/motion.json` records desktop/mobile temporal states,
+  reduced motion and the working SVG fallback. The associated frames were visually inspected.
+
+Demo limits remain explicit: uploaded profile images are local memory only; visitor links use
+demo grant identifiers/backup codes; the engine validates redemption and the QR alone never
+unlocks a door. Native sharing depends on browser support and otherwise copies the pass URL.

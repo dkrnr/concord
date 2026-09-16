@@ -1,7 +1,7 @@
 {
-  "url": "http://127.0.0.1:4192/",
+  "url": "http://127.0.0.1:5190/",
   "mode": "motion",
-  "capturedAt": "2026-09-16T15:26:08.170Z",
+  "capturedAt": "2026-09-16T23:42:01.448Z",
   "motionApproval": "Not assigned. Inspect frames/video and add site-specific assertions.",
   "cases": [
     {
@@ -26,7 +26,15 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
           "scrollY": 0,
@@ -42,7 +50,15 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
           "scrollY": 0,
@@ -58,7 +74,15 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
           "scrollY": 0,
@@ -74,7 +98,15 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
           "scrollY": 0,
@@ -90,10 +122,18 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
-          "scrollY": 205,
+          "scrollY": 311,
           "reducedMotion": false,
           "horizontalOverflow": false,
           "canvasCount": 1,
@@ -106,10 +146,18 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
-          "scrollY": 433,
+          "scrollY": 656,
           "reducedMotion": false,
           "horizontalOverflow": false,
           "canvasCount": 1,
@@ -122,10 +170,18 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
-          "scrollY": 91,
+          "scrollY": 138,
           "reducedMotion": false,
           "horizontalOverflow": false,
           "canvasCount": 1,
@@ -138,7 +194,15 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
           "scrollY": 0,
@@ -156,7 +220,7 @@
         "Visual quality and continuous playback feel"
       ],
       "liveRenderer": "Reported by page; inspect captured output to verify.",
-      "video": "page@219df10aeb429a4671777280afa54bea.webm"
+      "video": "page@7091e57d03f294ea687105646354c94c.webm"
     },
     {
       "viewport": "mobile",
@@ -180,7 +244,15 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
           "scrollY": 0,
@@ -196,7 +268,15 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
           "scrollY": 0,
@@ -212,10 +292,18 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
-          "scrollY": 349,
+          "scrollY": 499,
           "reducedMotion": false,
           "horizontalOverflow": false,
           "canvasCount": 1,
@@ -228,10 +316,18 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
-          "scrollY": 736,
+          "scrollY": 1054,
           "reducedMotion": false,
           "horizontalOverflow": false,
           "canvasCount": 1,
@@ -244,10 +340,18 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
-          "scrollY": 155,
+          "scrollY": 222,
           "reducedMotion": false,
           "horizontalOverflow": false,
           "canvasCount": 1,
@@ -260,7 +364,15 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
           "scrollY": 0,
@@ -278,7 +390,7 @@
         "Visual quality and continuous playback feel"
       ],
       "liveRenderer": "Reported by page; inspect captured output to verify.",
-      "video": "page@1c9dbb2d6a043ae5145790a0492a33ac.webm"
+      "video": "page@5e30fba3d479d3fb304c7521ebad5b84.webm"
     },
     {
       "viewport": "desktop",
@@ -291,7 +403,15 @@
             "renderer": "webgl",
             "room": "all",
             "preview": false,
-            "reducedMotion": true
+            "reducedMotion": true,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
           "scrollY": 0,
@@ -316,7 +436,15 @@
             "renderer": "fallback",
             "room": "all",
             "preview": false,
-            "reducedMotion": false
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
           },
           "hookError": null,
           "scrollY": 0,

@@ -1,6 +1,6 @@
 # Concord content, readability and loading audit
 
-Audit target: production preview at `http://127.0.0.1:4192`, desktop 1440×900 and mobile 390×844. Evidence is from the final production bundle. `qa/text-floor.mjs` inspects every visible element with its own rendered text across Home, Scenes, Access and Building, plus the mobile Home viewport; it fails if any computed text size is below 16px.
+Audit target: production preview at `http://127.0.0.1:5190`, desktop 1440×900 and mobile 390×844. Evidence is from the final production bundle. `qa/text-floor.mjs` inspects every visible element with its own rendered text across Home, Scenes, Access and Building, plus the mobile Home viewport; it fails if any computed text size is below 16px. The 2026-09-17 browser suite additionally rendered Profile, Notifications, the manual builder, Developer portfolio and the standalone visitor pass at their responsive layouts.
 
 ## Typography evidence
 
@@ -32,6 +32,12 @@ Ratios use WCAG relative luminance against the actual stable surface colors. Mov
 
 All recorded information pairs exceed 4.5:1.
 
+Dark-mode tokens were checked against their actual stable surfaces after the feature
+suite landed: primary/muted text measure 16.12:1 and 9.99:1 on `#111815`, 14.26:1 and
+8.84:1 on `#1A2420`; primary-action, accent, danger and warning pairs measure 7.70:1,
+7.54:1, 7.06:1 and 7.51:1 respectively. The language switch was also rendered in Spanish
+before returning to English for the remaining functional checks.
+
 ## Section media accounting
 
 | Screen / section | C | V | Pairing / exemption |
@@ -42,6 +48,8 @@ All recorded information pairs exceed 4.5:1.
 | Scene builder + rule receipt | exempt | exempt | form/editor flow; live architectural preview is additional state evidence |
 | Visitor pass | exempt | exempt | form plus generated credential, not marketing content |
 | Building units | exempt | exempt | operational data grid |
+| Profile and Notifications | exempt | exempt | profile form and functional engine event list |
+| Developer portfolio | exempt | exempt | aggregate operational metrics, unit health table and alert list; no marketing claims or resident behavior |
 | Safety, SOS and handover dialogs | exempt | exempt | transactional/safety flows |
 
 The code-authored scene changes room emphasis and preview lighting, so these are distinct explanatory states rather than one repeated decorative image.
@@ -54,7 +62,8 @@ The code-authored scene changes room emphasis and preview lighting, so these are
 | `manrope-600.woff2` | eager CSS `@font-face`, `font-display: swap` | local, 14,172 bytes |
 | `manrope-700.woff2` | eager CSS `@font-face`, `font-display: swap` | local, 14,212 bytes |
 | `editorial-serif.woff2` | eager CSS `@font-face`, `font-display: swap` | local, 26,356 bytes |
-| `pass-qr.svg` | interaction-created `.qr-ticket img`; eager browser default because it is immediately visible when inserted | SVG viewBox 37×37; reserved by CSS at 195×195px, avoiding layout shift inside the already-sized ticket |
+| Generated pass QR data URL | interaction-created `.qr-ticket img` and standalone `.visitor-qr`; eager browser default because each is immediately visible when inserted | SVG dimensions derive from the encoded grant; CSS reserves 195×195px resident and 210×210px visitor slots, avoiding layout shift inside the already-sized cards |
+| Uploaded profile image | session-created object/data URL in `.profile-avatar-large img` and the resident avatar; eager because it is immediately visible after selection | constrained to JPEG/PNG/WebP up to 3 MB; fixed 112×112px desktop and 80×80px mobile containers prevent layout shift |
 | Three.js apartment | `.home-canvas`; initialized after shell mount | canvas fills a fixed-height `.scene-wrap`, DPR capped at 1.5; no network asset requests |
 | SVG fallback | `.scene-fallback`; forced with `?renderer=fallback` or WebGL failure/context loss | same scene container dimensions; room controls remain functional |
 
