@@ -247,6 +247,7 @@ p { color: var(--muted); line-height: 1.58; }
 .form-stack fieldset { border: 0; padding: 0; margin: 0; }
 .form-stack legend, .form-stack > label, .handover-form label { display: grid; gap: 8px; font-size: 16px; font-weight: 750; width: 100%; }
 .segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.segmented.two { grid-template-columns: 1fr 1fr; }
 .segmented button { border: 1px solid var(--line); background: white; border-radius: 12px; min-height: 60px; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: capitalize; font-size: 16px; cursor: pointer; }
 .segmented button.selected { border-color: var(--primary); background: var(--accent); font-weight: 750; }
 .segmented svg { width: 19px; }
@@ -256,6 +257,9 @@ input, select { min-height: 50px; border: 1px solid #cfd5cd; border-radius: 11px
 .scope-row span { display: flex; flex-direction: column; }
 .scope-row strong { font-size: 16px; }
 .scope-row small { color: var(--muted); font-size: 16px; margin-top: 4px; }
+.recurring-days > div { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; }
+.recurring-days button { min-height: 44px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--muted); font-size: 16px; font-weight: 750; cursor: pointer; text-transform: capitalize; }
+.recurring-days button[aria-pressed="true"] { background: var(--primary); color: white; border-color: var(--primary); }
 .pass-preview { padding: 55px clamp(25px, 5vw, 75px); background: #e5e9df; display: flex; flex-direction: column; justify-content: center; align-items: center; }
 .empty-pass { text-align: center; max-width: 340px; }
 .empty-pass > svg { width: 56px; height: 56px; stroke-width: 1.2; color: var(--primary); }
@@ -271,6 +275,9 @@ input, select { min-height: 50px; border: 1px solid #cfd5cd; border-radius: 11px
 .ticket-window svg { width: 20px; color: var(--primary); }
 .ticket-window span { display: flex; flex-direction: column; text-align: left; font-size: 16px; color: var(--muted); }
 .ticket-window strong { color: var(--ink); font-size: 16px; margin-top: 2px; }
+.pass-recurrence { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px; margin-bottom: 12px; border-radius: 11px; background: var(--accent); color: var(--primary-dark); }
+.pass-recurrence svg { width: 20px; }.pass-recurrence span { display: flex; flex-direction: column; text-align: left; }.pass-recurrence strong, .pass-recurrence small { font-size: 16px; }
+.pass-share { display: grid; grid-template-columns: 1fr 52px; gap: 8px; margin-top: 14px; }.pass-share .secondary-button { padding: 0; }
 .backup-code { border-top: 1px dashed #b8c1b7; padding: 14px 5px; display: grid; gap: 6px; color: var(--muted); font-size: 16px; }.backup-code button { border: 0; background: #f0f3ed; color: var(--ink); min-height: 44px; border-radius: 9px; display: flex; align-items: center; justify-content: center; gap: 12px; cursor: pointer; }.backup-code strong { font-size: 18px; letter-spacing: .08em; }.backup-code small { color: var(--primary); font-size: 16px; font-weight: 800; }
 .qr-ticket > small { display: block; font-size: 16px; color: var(--muted); line-height: 1.5; margin-top: 14px; }
 .active-passes { width: min(100%, 420px); margin-top: 28px; }

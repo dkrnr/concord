@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
-  Activity, AlertTriangle, ArrowRight, BellRing, Building2, Check, ChevronDown, CircleHelp,
-  Clock3, DoorOpen, HeartPulse, Home, KeyRound, LayoutGrid, Leaf, LockKeyhole, Menu,
-  Globe2, MessageSquareText, Moon, Plus, Radio, ShieldCheck, SlidersHorizontal, Sparkles, Sun, UserRound,
+  Activity, AlertTriangle, ArrowRight, BellRing, Building2, CalendarDays, Check, ChevronDown, CircleHelp,
+  Clock3, Copy, DoorOpen, HeartPulse, Home, KeyRound, LayoutGrid, Leaf, LockKeyhole, Menu,
+  Globe2, MessageSquareText, Moon, Plus, Radio, Share2, ShieldCheck, SlidersHorizontal, Sparkles, Sun, UserRound,
   UsersRound, WandSparkles, X,
 } from 'lucide-react';
 import { adapter } from './data';
@@ -40,6 +40,12 @@ type GrantState = 'pending' | 'active' | 'expired';
 function grantState(grant: CapabilityGrant, now = Date.now()): GrantState {
   if (now < new Date(grant.validFrom).getTime()) return 'pending';
   if (now >= new Date(grant.validUntil).getTime()) return 'expired';
+  if (grant.recurring) {
+    const date = new Date(now);
+    const day = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Colombo', weekday: 'short' }).format(date).slice(0, 3).toLowerCase();
+    const time = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Colombo', hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
+    if (!grant.recurring.days.includes(day as NonNullable<CapabilityGrant['recurring']>['days'][number]) || time < grant.recurring.startTime || time >= grant.recurring.endTime) return 'pending';
+  }
   return 'active';
 }
 
@@ -290,18 +296,30 @@ function AccessView({ grants, onCreate, onWriteError }: { grants: CapabilityGran
   const { t, locale } = useI18n();
   const [role, setRole] = useState<GrantRole>('visitor');
   const [name, setName] = useState('Amaya');
-  const [duration, setDuration] = useState('2');
+  const initialStart = new Date();
+  const initialEnd = new Date(initialStart.getTime() + 30 * 86_400_000);
+  const [startDate, setStartDate] = useState(initialStart.toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(initialEnd.toISOString().slice(0, 10));
+  const [startTime, setStartTime] = useState('17:00');
+  const [endTime, setEndTime] = useState('21:00');
+  const [recurring, setRecurring] = useState(false);
+  const [days, setDays] = useState<NonNullable<CapabilityGrant['recurring']>['days']>(['sat']);
   const [created, setCreated] = useState<CapabilityGrant | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
   useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 30_000); return () => window.clearInterval(timer); }, []);
   async function createPass(event: FormEvent) {
     event.preventDefault(); setBusy(true); setError(null);
-    const from = new Date(); const until = new Date(from.getTime() + Number(duration) * 3_600_000);
+    const from = new Date(`${startDate}T${recurring ? '00:00' : startTime}:00+05:30`);
+    const until = new Date(`${endDate}T${recurring ? '23:59' : endTime}:00+05:30`);
+    if (from >= until || (recurring && (!days.length || startTime >= endTime))) {
+      setError(t('Choose a valid date range, at least one day, and an end time after the start time.')); setBusy(false); return;
+    }
     try {
-      const grant = await adapter.createGrant({ grant: { actor: name, apartmentId: APARTMENT_ID, role, scope: ['lock.unlock'], validFrom: from.toISOString(), validUntil: until.toISOString() }, requestId: crypto.randomUUID() });
+      const grant = await adapter.createGrant({ grant: { actor: name, apartmentId: APARTMENT_ID, role, scope: ['lock.unlock'], validFrom: from.toISOString(), validUntil: until.toISOString(), ...(recurring ? { recurring: { days, startTime, endTime } } : {}) }, requestId: crypto.randomUUID() });
       setCreated(grant); setNow(Date.now()); await onCreate(grant);
     } catch (cause) { setError(errorMessage(cause)); onWriteError(cause); }
     finally { setBusy(false); }
@@ -309,13 +327,27 @@ function AccessView({ grants, onCreate, onWriteError }: { grants: CapabilityGran
   const code = created ? backupCode(created) : '';
   const qr = created ? qrDataUrl(passPayload(created.id, code)) : '';
   async function copyCode() { if (!created) return; try { await navigator.clipboard.writeText(code); setCopied(true); window.setTimeout(() => setCopied(false), 1600); } catch { setCopied(false); } }
+  async function sharePass(copyOnly = false) {
+    if (!created) return;
+    const url = passPayload(created.id, code);
+    try {
+      if (!copyOnly && navigator.share) await navigator.share({ title: `Concord pass for ${created.actor}`, text: t('View your time-limited Concord visitor pass.'), url });
+      else await navigator.clipboard.writeText(url);
+      setShared(true); window.setTimeout(() => setShared(false), 1800);
+    } catch (cause) { if ((cause as DOMException).name !== 'AbortError') setError(t('The pass link could not be shared. Copy it and try again.')); }
+  }
+  function toggleDay(day: NonNullable<CapabilityGrant['recurring']>['days'][number]) { setDays((current) => current.includes(day) ? current.filter((item) => item !== day) : [...current, day]); }
   return <div className="access-view"><section className="access-form"><h1>{t('A key that knows when to leave.')}</h1><p>{t('Create a pass for the right door and the right window. It expires without a reminder.')}</p>
     <form onSubmit={createPass} className="form-stack"><fieldset><legend>{t('Who is it for?')}</legend><div className="segmented">{(['visitor','delivery','cleaner'] as GrantRole[]).map((item) => <button type="button" key={item} className={role === item ? 'selected' : ''} onClick={() => setRole(item)}>{item === 'visitor' ? <UserRound /> : item === 'delivery' ? <DoorOpen /> : <Sparkles />}{t(item)}</button>)}</div></fieldset>
-      <label>{t('Name or service')}<input value={name} onChange={(e) => setName(e.target.value)} required /></label><label>{t('Access window')}<select value={duration} onChange={(e) => setDuration(e.target.value)}><option value="1">{t('Next 1 hour')}</option><option value="2">{t('Next 2 hours')}</option><option value="4">{t('Next 4 hours')}</option><option value="24">{t('Today')}</option></select></label>
+      <label>{t('Name or service')}<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
+      <fieldset><legend>{t('Access schedule')}</legend><div className="segmented two"><button type="button" className={!recurring ? 'selected' : ''} onClick={() => setRecurring(false)}><Clock3 />{t('One-time')}</button><button type="button" className={recurring ? 'selected' : ''} onClick={() => setRecurring(true)}><CalendarDays />{t('Repeats weekly')}</button></div></fieldset>
+      <div className="form-two"><label>{t('Starts on')}<input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} required /></label><label>{t('Ends on')}<input type="date" min={startDate} value={endDate} onChange={(event) => setEndDate(event.target.value)} required /></label></div>
+      {recurring && <fieldset className="recurring-days"><legend>{t('Repeats on')}</legend><div>{(['mon','tue','wed','thu','fri','sat','sun'] as const).map((day) => <button type="button" key={day} aria-pressed={days.includes(day)} onClick={() => toggleDay(day)}>{t(day)}</button>)}</div></fieldset>}
+      <div className="form-two"><label>{t(recurring ? 'Window starts' : 'Start time')}<input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} required /></label><label>{t(recurring ? 'Window ends' : 'End time')}<input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} required /></label></div>
       <div className="scope-row"><ShieldCheck /><span><strong>{t('Entry only')}</strong><small>{t('Unlock apartment 401 · no device control')}</small></span></div><button className="primary-button full" disabled={busy}>{busy ? t('Creating…') : <>{t('Create pass')} <ArrowRight /></>}</button>
       {error && <p className="inline-error" role="alert"><AlertTriangle /> {error}</p>}
     </form></section>
-    <aside className="pass-preview">{created ? <div className="qr-ticket"><div className="ticket-top"><BrandMark /><span>CONCORD PASS</span></div><span className={`grant-status ${grantState(created, now)}`}>{t(grantState(created, now))}</span><img src={qr} alt={`QR code for ${created.actor}`} /><h2>{created.actor}</h2><p>{t(created.role)} · Apartment 401</p><div className="backup-code"><span>{t('Backup code')}</span><button onClick={copyCode} aria-label={t('Copy backup code')}><strong>{code}</strong><small>{t(copied ? 'Copied' : 'Copy')}</small></button></div><div className="ticket-window"><Clock3 /><span>{t(grantState(created, now) === 'pending' ? 'Valid from' : grantState(created, now) === 'expired' ? 'Expired at' : 'Valid until')}<strong>{formatTime(grantState(created, now) === 'pending' ? created.validFrom : created.validUntil, locale)}</strong></span></div><small>{t('Demo pass · secure redemption pending backend integration')}</small></div> : <div className="empty-pass"><KeyRound /><h2>{t('Your pass appears here')}</h2><p>{t('The QR, readable backup code and expiry window will be ready to share.')}</p></div>}
+    <aside className="pass-preview">{created ? <div className="qr-ticket"><div className="ticket-top"><BrandMark /><span>CONCORD PASS</span></div><span className={`grant-status ${grantState(created, now)}`}>{t(grantState(created, now))}</span><img src={qr} alt={`QR code for ${created.actor}`} /><h2>{created.actor}</h2><p>{t(created.role)} · Apartment 401</p>{created.recurring && <div className="pass-recurrence"><CalendarDays /><span><strong>{created.recurring.days.map((day) => t(day)).join(' · ')}</strong><small>{created.recurring.startTime}–{created.recurring.endTime}</small></span></div>}<div className="backup-code"><span>{t('Backup code')}</span><button onClick={copyCode} aria-label={t('Copy backup code')}><strong>{code}</strong><small>{t(copied ? 'Copied' : 'Copy')}</small></button></div><div className="ticket-window"><Clock3 /><span>{t(grantState(created, now) === 'pending' ? 'Valid from' : grantState(created, now) === 'expired' ? 'Expired at' : 'Valid until')}<strong>{new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(grantState(created, now) === 'pending' ? created.validFrom : created.validUntil))}</strong></span></div><div className="pass-share"><button className="primary-button" onClick={() => sharePass()}><Share2 />{shared ? t('Shared') : t('Share pass')}</button><button className="secondary-button" onClick={() => sharePass(true)} aria-label={t('Copy pass link')}><Copy /></button></div><small>{t('Demo pass · secure redemption pending backend integration')}</small></div> : <div className="empty-pass"><KeyRound /><h2>{t('Your pass appears here')}</h2><p>{t('The QR, readable backup code and expiry window will be ready to share.')}</p></div>}
       {grants.length > 0 && <div className="active-passes">{grants.map((grant) => { const state = grantState(grant, now); return <div key={grant.id}><span className="avatar">{grant.actor[0]}</span><span><strong>{grant.actor}</strong><small>{t(grant.role)} · {formatTime(state === 'pending' ? grant.validFrom : grant.validUntil, locale)}</small></span><span className={`active-label ${state}`}>{t(state)}</span></div>; })}</div>}</aside>
   </div>;
 }
