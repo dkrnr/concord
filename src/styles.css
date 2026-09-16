@@ -80,6 +80,9 @@ p { color: var(--muted); line-height: 1.58; }
 .sidebar-spacer { flex: 1; }
 .sidebar-utility { min-height: 46px; border: 0; border-radius: 11px; background: transparent; display: flex; align-items: center; gap: 12px; padding: 0 13px; color: var(--muted); font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 8px; }
 .sidebar-utility svg { width: 20px; }
+.language-switch { min-height: 46px; display: grid; grid-template-columns: 20px 1fr; align-items: center; gap: 12px; padding: 0 10px; color: var(--muted); }
+.language-switch svg { width: 20px; }
+.language-switch select { min-height: 38px; width: 100%; background: transparent; border: 0; padding-inline: 3px 28px; color: var(--ink); font-weight: 700; }
 .emergency-button { border: 1px solid #e4bdb9; background: #fff4f2; color: var(--danger); border-radius: 13px; display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 13px; cursor: pointer; text-align: left; }
 .emergency-button svg { width: 22px; }
 .emergency-button span { display: flex; flex-direction: column; }

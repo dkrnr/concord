@@ -1,8 +1,10 @@
 import { X } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, type ReactNode } from 'react';
+import { useI18n } from '../i18n';
 
 export function Dialog({ open, title, children, onClose, tone = 'default' }: { open: boolean; title: string; children: ReactNode; onClose: () => void; tone?: 'default' | 'danger' }) {
+  const { t } = useI18n();
   const reduced = useReducedMotion();
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -23,7 +25,7 @@ export function Dialog({ open, title, children, onClose, tone = 'default' }: { o
         exit={reduced ? { opacity: 0 } : { opacity: 0, transform: 'translateY(16px) scale(.98)' }}
         transition={{ duration: .24, ease: [.23, 1, .32, 1] }}
       >
-        <header className="dialog-header"><h2 id="dialog-title">{title}</h2><button ref={closeRef} className="icon-button" onClick={onClose} aria-label="Close dialog"><X /></button></header>
+        <header className="dialog-header"><h2 id="dialog-title">{title}</h2><button ref={closeRef} className="icon-button" onClick={onClose} aria-label={t('Close dialog')}><X /></button></header>
         {children}
       </motion.section>
     </motion.div>}
