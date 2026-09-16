@@ -1,0 +1,20 @@
+[
+  {
+    "deviceId": "dev_occ_401",
+    "type": "occupancy.changed",
+    "value": { "occupied": false },
+    "note": "everyone leaves -> should trigger rule_lock_on_leave"
+  },
+  {
+    "deviceId": "dev_motion_hallway",
+    "type": "motion.detected",
+    "value": { "room": "hallway" },
+    "note": "evening motion -> should trigger rule_light_on_motion"
+  },
+  {
+    "deviceId": "dev_lock_401",
+    "type": "lock.changed",
+    "value": { "locked": false },
+    "note": "door unlocks while apartment empty, no active grant -> anomaly alert WhyCard"
+  }
+]
