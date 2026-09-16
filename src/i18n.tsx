@@ -72,6 +72,9 @@ const es: Record<string, string> = {
   'Profile picture': 'Foto de perfil', 'Replace picture': 'Cambiar foto', 'Choose a picture': 'Elegir una foto', 'JPG, PNG or WebP · up to 3 MB': 'JPG, PNG o WebP · hasta 3 MB',
   'Choose a JPG, PNG or WebP image under 3 MB.': 'Elige una imagen JPG, PNG o WebP de menos de 3 MB.', 'That image could not be read. Choose another file.': 'No se pudo leer la imagen. Elige otro archivo.',
   'Enter the resident name.': 'Escribe el nombre del residente.', 'Remove picture': 'Eliminar foto', 'Profile saved': 'Perfil guardado', 'Save profile': 'Guardar perfil',
+  'Alerts, explanations and emergency updates from the live home engine.': 'Alertas, explicaciones y actualizaciones de emergencia del motor del hogar.', '{count} unread': '{count} sin leer',
+  'Loading notifications': 'Cargando notificaciones', 'You’re all caught up': 'Estás al día', 'New WhyCards, alerts and SOS updates will appear here.': 'Las nuevas explicaciones, alertas y actualizaciones SOS aparecerán aquí.',
+  'Emergency update': 'Actualización de emergencia', 'Home explanation': 'Explicación del hogar', 'Read': 'Leído', 'Mark as read': 'Marcar como leído',
 };
 
 type I18nValue = { language: Language; setLanguage: (value: Language) => void; t: (message: string, values?: Values) => string; locale: string };

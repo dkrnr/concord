@@ -87,3 +87,14 @@ export interface Conflict {
   resolutionOptions: { type: ConflictResolutionType; label: string }[];
   detectedAt: string;
 }
+
+export interface NotificationItem {
+  id: string;
+  apartmentId: string;
+  kind: 'why_card' | 'sos_event';
+  severity: 'alert' | 'info';
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+}

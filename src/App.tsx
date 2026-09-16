@@ -7,7 +7,7 @@ import {
   UsersRound, WandSparkles, X,
 } from 'lucide-react';
 import { adapter } from './data';
-import type { CapabilityGrant, Conflict, Device, GrantRole, Rule, SosEvent, WhyCard, WhyOverride } from './domain/contracts';
+import type { CapabilityGrant, Conflict, Device, GrantRole, NotificationItem, Rule, SosEvent, WhyCard, WhyOverride } from './domain/contracts';
 import { HomeScene, type Room } from './scene/HomeScene';
 import { DeviceIcon } from './components/Icons';
 import { Dialog } from './components/Dialog';
@@ -15,7 +15,7 @@ import { passPayload, qrDataUrl } from './data/passQr';
 import { applyTheme, preferredTheme, type Theme } from './theme';
 import { useI18n, type Language } from './i18n';
 
-type Route = 'home' | 'scenes' | 'access' | 'profile' | 'building';
+type Route = 'home' | 'scenes' | 'access' | 'profile' | 'notifications' | 'building';
 type Role = 'resident' | 'operator';
 type ConnectionState = 'live' | 'reconnecting' | 'stale' | 'offline';
 type ResidentProfile = { name: string; photo: string | null };
@@ -191,6 +191,14 @@ function ProfileView({ profile, onSave }: { profile: ResidentProfile; onSave: (p
   </form></div>;
 }
 
+function NotificationsView({ items, loading, error, onRetry, onMarkRead }: { items: NotificationItem[]; loading: boolean; error: string | null; onRetry: () => void; onMarkRead: (id: string) => Promise<void> }) {
+  const { t, locale } = useI18n();
+  return <div className="notifications-view"><header className="notifications-heading"><div><h1>{t('Notifications')}</h1><p>{t('Alerts, explanations and emergency updates from the live home engine.')}</p></div><span>{t('{count} unread', { count: items.filter((item) => !item.read).length })}</span></header>
+    {error && <div className="inline-error notification-error" role="alert"><AlertTriangle /><span>{error}</span><button className="text-button" onClick={onRetry}>{t('Retry now')}</button></div>}
+    {loading && items.length === 0 ? <div className="notification-skeleton" aria-label={t('Loading notifications')}><span /><span /><span /></div> : items.length === 0 ? <div className="empty-notifications"><BellRing /><h2>{t('You’re all caught up')}</h2><p>{t('New WhyCards, alerts and SOS updates will appear here.')}</p></div> : <div className="notification-list">{items.map((item) => <article key={item.id} className={`notification-row ${item.severity} ${item.read ? 'read' : 'unread'}`}><span className="notification-kind">{item.kind === 'sos_event' ? <HeartPulse /> : item.severity === 'alert' ? <AlertTriangle /> : <CircleHelp />}</span><div><div className="notification-meta"><span>{t(item.kind === 'sos_event' ? 'Emergency update' : 'Home explanation')}</span><time dateTime={item.timestamp}>{new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.timestamp))}</time></div><h2>{item.title}</h2><p>{item.message}</p></div>{item.read ? <span className="read-state"><Check /> {t('Read')}</span> : <button className="secondary-button" onClick={() => onMarkRead(item.id)}>{t('Mark as read')}</button>}</article>)}</div>}
+  </div>;
+}
+
 function conditionCopy(rule: Rule, t: (message: string) => string = (message) => message) {
   if (!rule.conditions.length) return t('No extra conditions');
   return rule.conditions.map((condition) => `${condition.field} ${condition.op} ${String(condition.value)}`).join(' · ');
@@ -353,6 +361,9 @@ function App() {
   const [retryKey, setRetryKey] = useState(0);
   const [theme, setTheme] = useState<Theme>(() => preferredTheme());
   const [profile, setProfile] = useState<ResidentProfile>({ name: 'Maria Perera', photo: null });
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState<string | null>(null);
   const reduce = Boolean(useReducedMotion());
 
   function toggleTheme() {
@@ -360,6 +371,22 @@ function App() {
     setTheme(next);
     applyTheme(next, true);
   }
+
+  async function refreshNotifications() {
+    setNotificationsLoading(true);
+    try { setNotifications(await adapter.fetchNotifications(APARTMENT_ID)); setNotificationsError(null); }
+    catch (cause) { setNotificationsError(errorMessage(cause)); }
+    finally { setNotificationsLoading(false); }
+  }
+
+  async function markNotificationRead(id: string) {
+    try {
+      await adapter.markNotificationRead(id);
+      setNotifications((all) => all.map((item) => item.id === id ? { ...item, read: true } : item));
+    } catch (cause) { setNotificationsError(errorMessage(cause)); }
+  }
+
+  useEffect(() => { void refreshNotifications(); }, [cards, sos]);
 
   // One synchronization loop owns bootstrap, polling, focus recovery and teardown.
   // Keeping these in one place prevents cursor races and overlapping focus polls.
@@ -516,7 +543,7 @@ function App() {
 
   function switchRole(next: Role) { setRole(next); setRoute(next === 'operator' ? 'building' : 'home'); setMobileMenu(false); }
   async function triggerSos() { try { const event = await adapter.triggerSos({ apartmentId: APARTMENT_ID, requestId: crypto.randomUUID() }); setSos(event); setWriteError(null); } catch (cause) { reportWriteError(cause); throw cause; } }
-  const pageTitle = t(role === 'operator' ? 'Building' : route === 'profile' ? 'Profile' : NAV.find((item) => item.id === route)?.label ?? 'Home');
+  const pageTitle = t(role === 'operator' ? 'Building' : route === 'profile' ? 'Profile' : route === 'notifications' ? 'Notifications' : NAV.find((item) => item.id === route)?.label ?? 'Home');
 
   if (loading) return <div className="boot-screen"><BrandMark /><span>{t('Connecting to Apartment 401…')}</span></div>;
   if (loadError && devices.length === 0) return <div className="boot-screen boot-error" role="alert"><BrandMark /><strong>{t('Home engine offline')}</strong><span>{loadError}</span><button className="primary-button" onClick={() => setRetryKey((value) => value + 1)}>{t('Retry connection')}</button></div>;
@@ -533,13 +560,14 @@ function App() {
       <button className="emergency-button" onClick={() => { setSosOpen(true); setMobileMenu(false); }}><HeartPulse /><span><strong>{t('Emergency')}</strong><small>{t('Get help now')}</small></span></button>
       <div className="role-switch"><span>{t('Demo view')}</span><div><button className={role === 'resident' ? 'selected' : ''} onClick={() => switchRole('resident')}>{t('Resident')}</button><button className={role === 'operator' ? 'selected' : ''} onClick={() => switchRole('operator')}>{t('Operator')}</button></div></div>
     </aside>
-    <main className="app-content" id="main-content"><div className="desktop-topbar"><span>{pageTitle}</span><div><span className={`connection ${connection}`} role="status"><i /> {connectionCopy[connection]}</span><button className="icon-button theme-topbar" onClick={toggleTheme} aria-label={t(theme === 'light' ? 'Use dark mode' : 'Use light mode')}>{theme === 'light' ? <Moon /> : <Sun />}</button><button className="notification-button" aria-label={t('Notifications')}><BellRing /></button><button className="avatar desktop-avatar avatar-button" onClick={() => { setRole('resident'); setRoute('profile'); }} aria-label={t('Open profile')}>{profile.photo ? <img src={profile.photo} alt="" /> : profile.name[0]}</button></div></div>
+    <main className="app-content" id="main-content"><div className="desktop-topbar"><span>{pageTitle}</span><div><span className={`connection ${connection}`} role="status"><i /> {connectionCopy[connection]}</span><button className="icon-button theme-topbar" onClick={toggleTheme} aria-label={t(theme === 'light' ? 'Use dark mode' : 'Use light mode')}>{theme === 'light' ? <Moon /> : <Sun />}</button><button className="notification-button" aria-label={t('Notifications')} onClick={() => { setRole('resident'); setRoute('notifications'); void refreshNotifications(); }}><BellRing />{notifications.some((item) => !item.read) && <span className="unread-badge">{Math.min(99, notifications.filter((item) => !item.read).length)}</span>}</button><button className="avatar desktop-avatar avatar-button" onClick={() => { setRole('resident'); setRoute('profile'); }} aria-label={t('Open profile')}>{profile.photo ? <img src={profile.photo} alt="" /> : profile.name[0]}</button></div></div>
       {connection !== 'live' && <div className="connection-banner" role="status"><AlertTriangle /><span>{connectionCopy[connection]}. {t('The last confirmed home state remains visible.')}</span><button onClick={() => setRetryKey((value) => value + 1)}>{t('Retry now')}</button></div>}
       <AnimatePresence mode="wait" initial={false}><motion.div key={`${role}-${route}`} className="route-frame" initial={reduce ? { opacity: 0 } : { opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }} exit={{ opacity: 0 }} transition={{ duration: reduce ? .01 : .18 }}>
         {route === 'home' && <HomeView devices={devices} cards={cards} residentName={profile.name} selectedRoom={room} setSelectedRoom={setRoom} onOverride={override} onProposal={decideProposal} overrideBusy={overrideBusy} onCommand={commandDevice} commandBusy={commandBusy} onOpenScenes={() => setRoute('scenes')} />}
         {route === 'scenes' && <ScenesView devices={devices} onConflict={(rule, found) => setConflict({ rule, conflict: found })} onSaved={setSavedRule} onWriteError={reportWriteError} />}
         {route === 'access' && <AccessView grants={grants} onCreate={async () => { setGrants(await adapter.fetchGrants(APARTMENT_ID)); }} onWriteError={reportWriteError} />}
         {route === 'profile' && <ProfileView profile={profile} onSave={setProfile} />}
+        {route === 'notifications' && <NotificationsView items={notifications} loading={notificationsLoading} error={notificationsError} onRetry={refreshNotifications} onMarkRead={markNotificationRead} />}
         {route === 'building' && <BuildingView onHandover={() => setHandoverOpen(true)} />}
       </motion.div></AnimatePresence>
     </main>

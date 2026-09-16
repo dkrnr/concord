@@ -1,4 +1,4 @@
-import type { CapabilityGrant, Conflict, Device, Event, Rule, SosEvent, WhyCard, WhyOverride } from '../domain/contracts';
+import type { CapabilityGrant, Conflict, Device, Event, NotificationItem, Rule, SosEvent, WhyCard, WhyOverride } from '../domain/contracts';
 
 export type RuleProposal = { rule: Rule; conflicts: Conflict[] };
 export type RuleSaveResult =
@@ -24,4 +24,6 @@ export interface ConcordAdapter {
   createGrant(input: { grant: Omit<CapabilityGrant, 'id'>; requestId: string }, signal?: AbortSignal): Promise<CapabilityGrant>;
   triggerSos(input: { apartmentId: string; requestId: string }, signal?: AbortSignal): Promise<SosEvent>;
   pollFeed(input: { apartmentId: string; cursor?: string }, signal?: AbortSignal): Promise<{ items: FeedItem[]; cursor: string; hasMore: boolean; reset: boolean }>;
+  fetchNotifications(apartmentId: string, signal?: AbortSignal): Promise<NotificationItem[]>;
+  markNotificationRead(notificationId: string, signal?: AbortSignal): Promise<{ id: string; read: true }>;
 }
