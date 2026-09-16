@@ -100,7 +100,7 @@ const routes = {
     if (!body.sentence || typeof body.sentence !== 'string') {
       return { status: 400, body: { code: 'VALIDATION', message: 'sentence is required.', retryable: false } };
     }
-    const result = await sentenceToRule(body.sentence);
+    const result = await sentenceToRule(body.sentence, store.devices);
     if (result.error) {
       return { status: 422, body: { code: 'NEEDS_CLARIFICATION', message: result.error, retryable: false, fieldErrors: { sentence: result.error } } };
     }

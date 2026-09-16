@@ -1,5 +1,18 @@
 # Concord — studio direction and implementation handoff
 
+## CP3 natural-language target reliability — 2026-09-17
+
+- Scene interpretation now receives the current controllable device inventory and is
+  rejected before draft creation when a named room/device is unavailable.
+- Returned model actions are independently checked against device IDs, types and rooms;
+  a model cannot redirect a named target to another room or use an unknown device.
+- `NEEDS_CLARIFICATION` preserves the submitted sentence in the existing editor and
+  creates, saves and executes nothing.
+- Live HTTP verification on the isolated local engine: bedroom AC at 23°C/22:00 and
+  lock-on-leave returned valid drafts; kitchen lights and vague input returned 422
+  clarification responses; devices, installed rules, WhyCards and feed stayed unchanged.
+- Automated regression coverage: `npm test`. Production build: `npm run build`.
+
 ## Status / next action — 2026-09-16
 
 Competition UI implementation and technical QA are complete; visual acceptance remains
