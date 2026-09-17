@@ -1,0 +1,14 @@
+{
+  "capturedAt": "2026-09-17T01:34:34.372Z",
+  "liveEngine": true,
+  "optimisticRenderMs": 4.8,
+  "liveState": {
+    "lightOn": false
+  },
+  "previewState": {
+    "preview": true,
+    "room": "living",
+    "curtainOpen": 100
+  },
+  "errors": []
+}

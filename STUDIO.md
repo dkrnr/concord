@@ -379,3 +379,21 @@ Evidence:
 - Live HTTP checks against `127.0.0.1:8787` resolved “cool the bedroom to 23 at 10pm” to
   `dev_ac_bedroom`; missing kitchen lights and vague input returned HTTP 422
   `NEEDS_CLARIFICATION`. Notification and portfolio reads returned HTTP 200.
+
+## Immediate 3D state synchronization — 2026-09-17
+
+- Resident device controls now update the shared device snapshot optimistically, so the device
+  card and WebGL apartment receive the new light, climate, curtain or lock state in the same
+  render. The live engine remains authoritative: success refetches its snapshot; failure refetches
+  or restores the prior device state and keeps the existing write-error treatment.
+- Scene preview now projects every draft rule action onto a derived device snapshot, including
+  `deviceId: "all"`, and feeds those exact values to the same 3D apartment. Preview highlighting
+  no longer masks the AC state, temperature, lighting or curtain position it is meant to show.
+- Visual interpolation for device materials, lights and curtain geometry was tightened so the
+  physical response settles quickly without removing the established motion language.
+
+Evidence: `qa/state-sync/report.json` measured the live light update reaching the 3D scene in
+4.8 ms in-browser before engine reconciliation, and verified a manual curtain rule projected
+`openPercent: 100` into the living-room preview. `qa/state-sync/live-light-off.png` and
+`qa/state-sync/rule-curtain-open.png` are the inspected rendered states. The engine was reset
+after the test.

@@ -30,6 +30,20 @@ const ROOM_BY_DEVICE: Record<string, Room> = {
   dev_lock_401: 'entry', dev_smoke_401: 'kitchen', dev_occ_401: 'all',
 };
 
+function patchDeviceState(devices: Device[], deviceId: string, set: Record<string, unknown>) {
+  return devices.map((device) => device.id === deviceId
+    ? { ...device, state: { ...device.state, ...set }, lastUpdated: new Date().toISOString() }
+    : device);
+}
+
+function projectRuleDevices(devices: Device[], rule: Rule | null) {
+  if (!rule) return devices;
+  return rule.actions.reduce((projected, action) => projected.map((device) => {
+    const matches = action.deviceId === 'all' ? device.type === action.deviceType : device.id === action.deviceId;
+    return matches ? { ...device, state: { ...device.state, ...action.set } } : device;
+  }), devices);
+}
+
 const NAV = [{ id: 'home' as const, label: 'Home', icon: Home }, { id: 'scenes' as const, label: 'Scenes', icon: WandSparkles }, { id: 'access' as const, label: 'Access', icon: KeyRound }];
 
 function formatTime(value: string, locale = 'en-US') {
@@ -299,6 +313,7 @@ function ScenesView({ devices, onConflict, onSaved, onWriteError }: { devices: D
   }
   const previewRoom = proposal ? (proposal.rule.actions[0]?.deviceId === 'all' ? 'all' : String(devices.find((device) => device.id === proposal.rule.actions[0]?.deviceId)?.state.room ?? 'all')) as Room : 'all';
   const previewAction = proposal ? actionCopy(proposal.rule, devices, t) : t('No proposed changes.');
+  const previewDevices = useMemo(() => projectRuleDevices(devices, preview ? proposal?.rule ?? null : null), [devices, preview, proposal]);
   return <div className="scenes-view">
     <section className="scene-compose">
       <h1>{t('Say how you want home to feel.')}</h1><p>{t('Describe the outcome in your words. Concord will show the exact rule before anything is saved.')}</p>
@@ -309,7 +324,7 @@ function ScenesView({ devices, onConflict, onSaved, onWriteError }: { devices: D
         <div className="receipt-actions"><button className="secondary-button" onClick={() => { setProposal(null); setPreview(false); }}>{t('Discard')}</button><button className="primary-button" onClick={save} disabled={busy}><Check /> {t('Check and save')}</button></div>
       </motion.div>}</AnimatePresence>
     </section>
-    <aside className="scene-preview"><div className="preview-bar"><span><span className={preview ? 'preview-dot active' : 'preview-dot'} /> {t(preview ? 'Preview' : 'Live state')}</span><button onClick={() => setPreview((v) => !v)} disabled={!proposal}>{t(preview ? 'Show live' : 'Preview rule')}</button></div><div className="preview-canvas"><HomeScene room={previewRoom} preview={preview} reducedMotion={reduce} devices={devices} /></div><div className="preview-copy"><strong>{preview ? `${t('Proposed change')} · ${t(previewRoom === 'all' ? 'multiple rooms' : previewRoom)}` : t('Live home')}</strong><p>{preview ? previewAction : t('No preview changes are applied.')}</p></div></aside>
+    <aside className="scene-preview"><div className="preview-bar"><span><span className={preview ? 'preview-dot active' : 'preview-dot'} /> {t(preview ? 'Preview' : 'Live state')}</span><button onClick={() => setPreview((v) => !v)} disabled={!proposal}>{t(preview ? 'Show live' : 'Preview rule')}</button></div><div className="preview-canvas"><HomeScene room={previewRoom} preview={preview} reducedMotion={reduce} devices={previewDevices} /></div><div className="preview-copy"><strong>{preview ? `${t('Proposed change')} · ${t(previewRoom === 'all' ? 'multiple rooms' : previewRoom)}` : t('Live home')}</strong><p>{preview ? previewAction : t('No preview changes are applied.')}</p></div></aside>
   </div>;
 }
 
@@ -606,12 +621,18 @@ function App() {
   }
 
   async function commandDevice(device: Device, set: Record<string, unknown>) {
+    const previous = device;
     setCommandBusy(device.id);
+    setDevices((all) => patchDeviceState(all, device.id, set));
     try {
       await adapter.commandDevice({ deviceId: device.id, set, requestId: crypto.randomUUID() });
       setDevices(await adapter.fetchDevices(APARTMENT_ID));
       setWriteError(null);
-    } catch (cause) { reportWriteError(cause); }
+    } catch (cause) {
+      try { setDevices(await adapter.fetchDevices(APARTMENT_ID)); }
+      catch { setDevices((all) => all.map((item) => item.id === previous.id ? previous : item)); }
+      reportWriteError(cause);
+    }
     finally { setCommandBusy(null); }
   }
 
