@@ -1,7 +1,7 @@
 import type { ConcordAdapter, RuleProposal, RuleSaveResult, DeviceCommandResult, FeedItem } from './adapter';
 import type { CapabilityGrant, Device, NotificationItem, Portfolio, Rule, SosEvent, WhyCard, WhyOverride } from '../domain/contracts';
 
-const BASE = import.meta.env.VITE_ENGINE_URL ?? 'http://localhost:8787';
+const BASE = import.meta.env.VITE_ENGINE_URL ?? (import.meta.env.DEV ? 'http://localhost:8787' : '');
 
 async function call<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   const timeout = AbortSignal.timeout(6000);

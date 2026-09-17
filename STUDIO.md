@@ -397,3 +397,21 @@ Evidence: `qa/state-sync/report.json` measured the live light update reaching th
 `openPercent: 100` into the living-room preview. `qa/state-sync/live-light-off.png` and
 `qa/state-sync/rule-curtain-open.png` are the inspected rendered states. The engine was reset
 after the test.
+
+## Remote presentation relay — 2026-09-17
+
+- Production now defaults its HTTP adapter to the page origin. The native Node presentation
+  server serves `dist/` with correct MIME/cache headers, preserves SPA routes such as visitor
+  passes, and handles the documented engine endpoints on that same origin.
+- `npm run relay` builds the app, starts the shared app/engine process, and opens a free temporary
+  Cloudflare Quick Tunnel over HTTP/2. This avoids the blocked QUIC path observed on the current
+  network and prevents a remote browser from trying to call its own `localhost:8787`.
+- `README.md` records the one-command launch and public `curl /commandDevice` example. A Quick
+  Tunnel remains ephemeral and requires the host terminal and machine to stay running.
+
+Public-path evidence in `qa/relay-public.json` records a WebGL browser loaded through the tunnel,
+then a command sent to the public `/commandDevice` endpoint. The open browser observed light off
+at 20% brightness after 2.318 seconds, matching the two-second live poll interval, with no console
+errors or failed resources. `qa/relay-public.png` is the inspected remote render. Static path
+containment, JavaScript MIME type, visitor SPA fallback, malformed JSON and unknown endpoint
+responses were also checked locally. A Strix scan was not run.

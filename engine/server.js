@@ -1,4 +1,7 @@
 import { createServer } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { extname, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { store, reset, nextId, APARTMENT, localDateString, pushFeed } from './state.js';
 import { checkConflict, fireEvent, runActions } from './rules.js';
 import { SAFETY_RULE_IDS } from './seedState.js';
@@ -8,6 +11,12 @@ import { validateGrant, isGrantActiveAt } from './grants.js';
 const FEED_BATCH_LIMIT = 100;
 
 const PORT = process.env.PORT || 8787;
+const DIST_DIR = resolve(fileURLToPath(new URL('../dist/', import.meta.url)));
+const MIME_TYPES = {
+  '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.png': 'image/png',
+};
 
 function send(res, status, body) {
   res.writeHead(status, {
@@ -33,6 +42,28 @@ function readBody(req) {
     });
     req.on('error', reject);
   });
+}
+
+async function serveApp(req, res, pathname) {
+  const relative = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
+  const requested = resolve(DIST_DIR, relative);
+  const withinDist = requested === DIST_DIR || requested.startsWith(`${DIST_DIR}${sep}`);
+  const candidates = withinDist ? [requested, resolve(DIST_DIR, 'index.html')] : [resolve(DIST_DIR, 'index.html')];
+  for (const candidate of candidates) {
+    try {
+      const body = await readFile(candidate);
+      const extension = extname(candidate);
+      res.writeHead(200, {
+        'Content-Type': MIME_TYPES[extension] ?? 'application/octet-stream',
+        'Cache-Control': candidate.includes(`${sep}assets${sep}`) ? 'public, max-age=31536000, immutable' : 'no-cache',
+      });
+      if (req.method === 'HEAD') res.end(); else res.end(body);
+      return;
+    } catch (error) {
+      if (error?.code !== 'ENOENT' && error?.code !== 'EISDIR') throw error;
+    }
+  }
+  send(res, 503, { code: 'APP_NOT_BUILT', message: 'Run npm run build before starting the presentation server.' });
 }
 
 // --- saveRule: conflict-checks BEFORE persisting, applies chosen resolutions ---
@@ -383,8 +414,14 @@ const routes = {
 
 const server = createServer(async (req, res) => {
   if (req.method === 'OPTIONS') { send(res, 204, {}); return; }
-  const handler = routes[req.url];
-  if (!handler) { adapterError(res, 'VALIDATION', `No route ${req.url}`, 404); return; }
+  const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
+  const handler = routes[pathname];
+  if (!handler && (req.method === 'GET' || req.method === 'HEAD')) {
+    try { await serveApp(req, res, pathname); }
+    catch { send(res, 500, { code: 'STATIC_ERROR', message: 'The presentation app could not be loaded.' }); }
+    return;
+  }
+  if (!handler) { adapterError(res, 'VALIDATION', `No route ${pathname}`, 404); return; }
   try {
     const body = req.method === 'POST' ? await readBody(req) : {};
     const { status, body: responseBody } = await handler(body);
@@ -395,6 +432,6 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Concord engine mock listening on http://localhost:${PORT}`);
+  console.log(`Concord presentation server listening on http://localhost:${PORT}`);
   console.log(`Apartment: ${APARTMENT} | seed events queued: ${store.eventQueue.length}`);
 });
