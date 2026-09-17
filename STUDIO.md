@@ -406,6 +406,9 @@ after the test.
 - `npm run relay` builds the app, starts the shared app/engine process, and opens a free temporary
   Cloudflare Quick Tunnel over HTTP/2. This avoids the blocked QUIC path observed on the current
   network and prevents a remote browser from trying to call its own `localhost:8787`.
+- `npm run present` wraps that relay in a reversible systemd inhibitor for lid-close, idle and
+  sleep. It owns the full presentation lifecycle: `Ctrl+C` removes the inhibitor and stops both
+  child processes, so no power-policy change remains active between demos.
 - `README.md` records the one-command launch and public `curl /commandDevice` example. A Quick
   Tunnel remains ephemeral and requires the host terminal and machine to stay running.
 

@@ -20,10 +20,20 @@ npm run preview -- --port ${PORT:-4192}
 
 ## Present from another machine
 
-`npm run relay` builds Concord, starts the app and live in-memory engine on one origin,
-then opens a free Cloudflare Quick Tunnel. Share the printed `https://…trycloudflare.com`
-URL. Keep that terminal and this machine awake during the presentation; Quick Tunnel URLs
-are temporary and change when restarted.
+Use the presentation command when you need the remote demo:
+
+```bash
+npm run present
+```
+
+It builds Concord, blocks lid-close/idle suspend, starts the app and live in-memory engine
+on one origin, then opens a free Cloudflare Quick Tunnel. Share the printed
+`https://…trycloudflare.com` URL. Keep that terminal running; press `Ctrl+C` to stop the
+tunnel, server and keep-awake block together. Quick Tunnel URLs are temporary and change
+when restarted. Presentation mode uses local port `8791` by default so it can coexist with
+the development engine on `8787`; override it with `PORT=9000 npm run present` if needed.
+
+`npm run relay` remains available when a keep-awake block is not wanted.
 
 The public URL is also the API base, so commands sent from any machine update the same
 state the open browser polls and renders in the 3D apartment:
