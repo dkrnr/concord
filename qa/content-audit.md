@@ -1,6 +1,6 @@
 # Concord content, readability and loading audit
 
-Audit target: production preview at `http://127.0.0.1:5190`, desktop 1440×900 and mobile 390×844. Evidence is from the final production bundle. `qa/text-floor.mjs` inspects every visible element with its own rendered text across Home, Scenes, Access and Building, plus the mobile Home viewport; it fails if any computed text size is below 16px. The 2026-09-17 browser suite additionally rendered Profile, Notifications, the manual builder, Developer portfolio and the standalone visitor pass at their responsive layouts.
+Audit target: production preview at `http://127.0.0.1:5194`, desktop 1440×900, laptop 1024×768 and mobile 390×844. Evidence is from the final production bundle. `qa/text-floor.mjs` inspects every visible element with its own rendered text across Home, Scenes, Access and Building, plus the mobile Home viewport; it fails if any computed text size is below 16px. The 2026-09-17 browser suite additionally rendered Profile, Notifications, the manual builder, Developer portfolio and the standalone visitor pass at their responsive layouts. A separate dark/Sinhala pass rendered all seven application routes at 1440×1000 and 390×844.
 
 ## Typography evidence
 
@@ -35,8 +35,10 @@ All recorded information pairs exceed 4.5:1.
 Dark-mode tokens were checked against their actual stable surfaces after the feature
 suite landed: primary/muted text measure 16.12:1 and 9.99:1 on `#111815`, 14.26:1 and
 8.84:1 on `#1A2420`; primary-action, accent, danger and warning pairs measure 7.70:1,
-7.54:1, 7.06:1 and 7.51:1 respectively. The language switch was also rendered in Spanish
-before returning to English for the remaining functional checks.
+7.54:1, 7.06:1 and 7.51:1 respectively. Semantic `--on-primary`, `--on-danger`,
+`--control`, `--control-border` and `--surface-soft` tokens now cover controls and panels
+that previously inherited light surfaces. The browser audit found no unintended white
+surface in dark mode; QR images are the deliberate white-backed exception required for scanning.
 
 ## Section media accounting
 
@@ -62,6 +64,9 @@ The code-authored scene changes room emphasis and preview lighting, so these are
 | `manrope-600.woff2` | eager CSS `@font-face`, `font-display: swap` | local, 14,172 bytes |
 | `manrope-700.woff2` | eager CSS `@font-face`, `font-display: swap` | local, 14,212 bytes |
 | `editorial-serif.woff2` | eager CSS `@font-face`, `font-display: swap` | local, 26,356 bytes |
+| `noto-sans-sinhala-400.woff2` | eager CSS `@font-face`, `font-display: swap`; active for `html[lang="si"]` | local, 35,396 bytes; `document.fonts.check()` passed in desktop/mobile Sinhala captures |
+| `noto-sans-sinhala-600.woff2` | eager CSS `@font-face`, `font-display: swap`; active for Sinhala UI emphasis | local, 38,972 bytes |
+| `noto-sans-sinhala-700.woff2` | eager CSS `@font-face`, `font-display: swap`; active for Sinhala headings/actions | local, 35,776 bytes |
 | Generated pass QR data URL | interaction-created `.qr-ticket img` and standalone `.visitor-qr`; eager browser default because each is immediately visible when inserted | SVG dimensions derive from the encoded grant; CSS reserves 195×195px resident and 210×210px visitor slots, avoiding layout shift inside the already-sized cards |
 | Uploaded profile image | session-created object/data URL in `.profile-avatar-large img` and the resident avatar; eager because it is immediately visible after selection | constrained to JPEG/PNG/WebP up to 3 MB; fixed 112×112px desktop and 80×80px mobile containers prevent layout shift |
 | Three.js apartment | `.home-canvas`; initialized after shell mount | canvas fills a fixed-height `.scene-wrap`, DPR capped at 1.5; no network asset requests |
@@ -72,7 +77,8 @@ There are no below-fold raster images or CSS background images, so no lazy-load 
 ## Evidence links
 
 - Static viewports: `qa/desktop-viewport.png`, `qa/laptop-viewport.png`, `qa/mobile-viewport.png`, `qa/screenshots.json`
+- Dark Sinhala routes: `qa/theme-polish/`, `qa/theme-polish/audit.json`
 - Interaction states: `qa/states/`
-- Motion/live/reduced/fallback: `qa/motion/`, `qa/motion/motion.json`
+- Motion/live/reduced/fallback: `qa/motion-polish/`, `qa/motion-polish/motion.json`
 - Functional flow: `qa/interaction.mjs`
 - Scene states: `qa/scene.mjs`

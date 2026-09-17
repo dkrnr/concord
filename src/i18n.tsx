@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-export type Language = 'en' | 'es';
+export type Language = 'en' | 'es' | 'si';
 type Values = Record<string, string | number>;
 
 const es: Record<string, string> = {
@@ -18,8 +18,9 @@ const es: Record<string, string> = {
   'Paused until tomorrow': 'Pausado hasta mañana', 'Routine turned off': 'Rutina desactivada', 'Kept as is': 'Se mantiene',
   'Approve': 'Aprobar', 'Dismiss': 'Descartar', 'Keep': 'Mantener', 'Not tonight': 'Esta noche no', 'Never': 'Nunca',
   'Turn off': 'Apagar', 'Turn on': 'Encender', 'Close': 'Cerrar', 'Open': 'Abrir', 'Unlock': 'Desbloquear', 'Lock': 'Bloquear',
-  'brightness': 'brillo', 'open': 'abierto', 'on': 'encendido', 'off': 'apagado', 'Locked': 'Bloqueado', 'Unlocked': 'Desbloqueado',
-  'Alarm': 'Alarma', 'clear': 'despejado', 'Home occupied': 'Hogar ocupado', 'Away': 'Ausente', 'climate': 'clima', 'light': 'luz', 'curtain': 'cortina', 'lock': 'cerradura',
+  'brightness': 'brillo', 'temperature': 'temperatura', 'locked': 'cerrado', 'openPercent': 'porcentaje abierto', 'open': 'abierto', 'on': 'encendido', 'off': 'apagado', 'Locked': 'Bloqueado', 'Unlocked': 'Desbloqueado',
+  'Alarm': 'Alarma', 'clear': 'despejado', 'Home occupied': 'Hogar ocupado', 'Away': 'Ausente', 'climate': 'clima', 'light': 'luz', 'curtain': 'cortina', 'lock': 'cerradura', 'motion': 'movimiento', 'smoke': 'humo', 'occupancy': 'ocupación', 'hallway': 'pasillo', 'home': 'hogar',
+  'All {type} devices': 'Todos los dispositivos {type}',
   'Sensor · read only': 'Sensor · solo lectura', 'Lower bedroom temperature': 'Bajar temperatura del dormitorio', 'Raise bedroom temperature': 'Subir temperatura del dormitorio',
   'Tuesday · Apartment 401': 'Martes · Apartamento 401', 'Good evening, {name}.': 'Buenas tardes, {name}.',
   'Your home has settled in. One choice is waiting for you.': 'Tu hogar está en calma. Hay una decisión esperándote.',
@@ -90,7 +91,7 @@ const es: Record<string, string> = {
   'Prepare unit handover': 'Preparar entrega de unidad', 'Access begins with the lease and expires automatically at its end.': 'El acceso comienza con el contrato y caduca automáticamente al terminar.',
   'Resident type': 'Tipo de residente', 'Tenant': 'Inquilino', 'Owner': 'Propietario', 'Resident name': 'Nombre del residente', 'Lease begins': 'Inicio del contrato', 'Lease ends': 'Fin del contrato',
   'Resident controls': 'Controles del residente', 'Entry, climate, lights and curtains · no operator scope': 'Entrada, clima, luces y cortinas · sin permisos de operador',
-  'Activating…': 'Activando…', 'Activate at lease start': 'Activar al inicio del contrato', 'Language': 'Idioma', 'English': 'Inglés', 'Spanish': 'Español', 'Close dialog': 'Cerrar diálogo',
+  'Activating…': 'Activando…', 'Activate at lease start': 'Activar al inicio del contrato', 'Language': 'Idioma', 'English': 'Inglés', 'Spanish': 'Español', 'Sinhala': 'Cingalés', 'Close dialog': 'Cerrar diálogo',
   'Profile': 'Perfil', 'Open profile': 'Abrir perfil', 'Apartment 401 · Edit profile': 'Apartamento 401 · Editar perfil',
   'Your resident profile': 'Tu perfil de residente', 'Keep the identity shown across your home controls current. Changes stay in this demo session.': 'Mantén actualizada la identidad que aparece en los controles del hogar. Los cambios duran durante esta sesión de demostración.',
   'Profile picture': 'Foto de perfil', 'Replace picture': 'Cambiar foto', 'Choose a picture': 'Elegir una foto', 'JPG, PNG or WebP · up to 3 MB': 'JPG, PNG o WebP · hasta 3 MB',
@@ -101,18 +102,120 @@ const es: Record<string, string> = {
   'Emergency update': 'Actualización de emergencia', 'Home explanation': 'Explicación del hogar', 'Read': 'Leído', 'Mark as read': 'Marcar como leído',
 };
 
+const si: Record<string, string> = {
+  'Home': 'මුල් පිටුව', 'Scenes': 'දර්ශන', 'Access': 'ප්‍රවේශය', 'Building': 'ගොඩනැගිල්ල',
+  'Resident': 'නිවැසියා', 'Operator': 'මෙහෙයුම්කරු', 'Developer': 'සංවර්ධක',
+  'Portfolio': 'ගොඩනැගිලි එකතුව', 'Concord Portfolio': 'Concord ගොඩනැගිලි එකතුව', 'Developer overview': 'සංවර්ධක සාරාංශය', 'Aster portfolio': 'Aster ගොඩනැගිලි එකතුව',
+  'Every residence, one accountable view.': 'සෑම නිවසක්ම, එකම වගකීම් සහිත දසුනක.', 'Building-level adoption, fleet condition and handover readiness. Resident behavior remains private.': 'ගොඩනැගිලි මට්ටමේ භාවිතය, උපාංග තත්ත්වය සහ භාරදීමේ සූදානම. නිවැසියන්ගේ හැසිරීම් පෞද්ගලිකව තබා ගනී.',
+  'Live engine aggregate': 'සජීවී එන්ජින් සාරාංශය', 'Portfolio overview': 'එකතුවේ සාරාංශය', 'Active units': 'සක්‍රිය ඒකක', '{rate}% portfolio adoption': 'එකතුවෙන් {rate}%ක් භාවිතයේ',
+  'Fleet health': 'උපාංග සමූහයේ තත්ත්වය', 'healthy': 'හොඳ තත්ත්වයේ', 'Maintenance': 'නඩත්තු', 'open items': 'විවෘත අයිතම', 'high priority': 'ඉහළ ප්‍රමුඛතාව',
+  'Handover': 'භාරදීම', 'vacant': 'හිස්', 'Energy overview': 'බලශක්ති සාරාංශය', 'kWh average per unit': 'ඒකකයක සාමාන්‍ය kWh',
+  'Portfolio units': 'එකතුවේ ඒකක', 'total': 'මුළු', 'Fleet': 'උපාංග සමූහය', 'Clear': 'ගැටලු නැත', 'Recent alerts': 'මෑත ඇඟවීම්',
+  'Unit {unit}': 'ඒකකය {unit}', 'Fleet anomaly requires review.': 'උපාංග සමූහයේ අසාමාන්‍යතාව සමාලෝචනය කළ යුතුය.', '{count} maintenance items are open.': 'නඩත්තු අයිතම {count}ක් විවෘතයි.', 'Fleet health needs attention.': 'උපාංග තත්ත්වයට අවධානය අවශ්‍යයි.', 'No building alerts.': 'ගොඩනැගිලි ඇඟවීම් නැත.',
+  'occupied': 'පදිංචි', 'pending_handover': 'භාරදීමට නියමිත', 'medium': 'මධ්‍යම', 'high': 'ඉහළ', 'low': 'අඩු', 'open': 'විවෘත',
+  'Needs attention': 'අවධානය අවශ්‍යයි', 'Your call': 'ඔබේ තීරණය', 'Done': 'සම්පූර්ණයි',
+  'Paused until tomorrow': 'හෙට දක්වා නවතා ඇත', 'Routine turned off': 'පුරුද්ද අක්‍රිය කර ඇත', 'Kept as is': 'වෙනස් නොකර තබා ඇත',
+  'Approve': 'අනුමත කරන්න', 'Dismiss': 'ඉවත් කරන්න', 'Keep': 'තබා ගන්න', 'Not tonight': 'අද රාත්‍රියේ එපා', 'Never': 'කිසිදා එපා',
+  'Turn off': 'නිවන්න', 'Turn on': 'ක්‍රියාත්මක කරන්න', 'Close': 'වසන්න', 'Open': 'විවෘත කරන්න', 'Unlock': 'අගුළු හරින්න', 'Lock': 'අගුළු දමන්න',
+  'brightness': 'දීප්තිය', 'temperature': 'උෂ්ණත්වය', 'locked': 'අගුළු තත්ත්වය', 'openPercent': 'විවෘත ප්‍රතිශතය', 'on': 'ක්‍රියාත්මක', 'off': 'අක්‍රිය', 'Locked': 'අගුළු දමා ඇත', 'Unlocked': 'අගුළු හැර ඇත',
+  'Alarm': 'අනතුරු ඇඟවීම', 'clear': 'පැහැදිලියි', 'Home occupied': 'නිවසේ කෙනෙකු සිටී', 'Away': 'නිවසෙන් බැහැර', 'climate': 'වායු සමීකරණය', 'light': 'ආලෝකය', 'curtain': 'තිරය', 'lock': 'අගුල', 'motion': 'චලනය', 'smoke': 'දුම', 'occupancy': 'පදිංචි තත්ත්වය', 'hallway': 'පිවිසුම් මාර්ගය', 'home': 'නිවස',
+  'All {type} devices': 'සියලු {type} උපාංග',
+  'Sensor · read only': 'සංවේදකය · කියවීමට පමණයි', 'Lower bedroom temperature': 'නිදන කාමරයේ උෂ්ණත්වය අඩු කරන්න', 'Raise bedroom temperature': 'නිදන කාමරයේ උෂ්ණත්වය වැඩි කරන්න',
+  'Tuesday · Apartment 401': 'අඟහරුවාදා · මහල් නිවාසය 401', 'Good evening, {name}.': 'සුබ සැන්දෑවක්, {name}.',
+  'Your home has settled in. One choice is waiting for you.': 'ඔබේ නිවස සන්සුන්ව ඇත. එක් තීරණයක් ඔබ බලා සිටී.',
+  'New scene': 'නව දර්ශනයක්', 'Live home': 'සජීවී නිවස', '4 rooms · 6 devices': 'කාමර 4 · උපාංග 6',
+  'Evening mode': 'සැන්දෑ මාදිලිය', '3 changes active': 'වෙනස්කම් 3ක් සක්‍රියයි', 'Choose room': 'කාමරයක් තෝරන්න',
+  'Whole home': 'මුළු නිවස', 'living': 'විසිත්ත කාමරය', 'bedroom': 'නිදන කාමරය', 'kitchen': 'මුළුතැන්ගෙය', 'entry': 'පිවිසුම',
+  'Home state': 'නිවසේ තත්ත්වය', 'All devices': 'සියලු උපාංග', 'Why feed': 'හේතු සටහන',
+  'What home noticed': 'නිවස හඳුනාගත් දේ', '{count} new': 'අලුත් {count}',
+  'Every action comes with its reason. Correct one and Concord learns the boundary.': 'සෑම ක්‍රියාවකටම හේතුවක් ඇත. එය නිවැරදි කළ විට Concord ඔබේ සීමාව ඉගෙන ගනී.',
+  '{count} signals': 'සංඥා {count}', 'No extra conditions': 'අමතර කොන්දේසි නැත',
+  'Concord understood': 'Concord තේරුම් ගත්තේ මෙයයි', 'Draft': 'කෙටුම්පත', 'When': 'කවදාද', 'Trigger time': 'ක්‍රියාත්මක වන වේලාව',
+  'Unspecified event': 'නිශ්චිත නොකළ සිදුවීම', 'Only if': 'මෙය සත්‍ය නම් පමණයි', 'Then': 'ඉන්පසු', 'Resolved target': 'තෝරාගත් ඉලක්කය',
+  '{type} action {count}': '{type} ක්‍රියාව {count}', 'All {type} devices · room not specified': 'සියලු {type} උපාංග · කාමරය සඳහන් කර නැත',
+  '{id} · unavailable target, choose a real device': '{id} · ඉලක්කය නොමැත, පවතින උපාංගයක් තෝරන්න',
+  'The engine found {count} conflicts. Edit the target or action, then confirm to check again.': 'එන්ජිම ගැටුම් {count}ක් සොයා ගත්තේය. ඉලක්කය හෝ ක්‍රියාව සංස්කරණය කර නැවත තහවුරු කරන්න.',
+  'On / true': 'ක්‍රියාත්මක / සත්‍ය', 'Off / false': 'අක්‍රිය / අසත්‍ය',
+  'This is the engine’s exact resolution. Check the target, room and values before saving.': 'මෙය එන්ජිම විසඳූ නිශ්චිත ආකාරයයි. සුරැකීමට පෙර ඉලක්කය, කාමරය සහ අගයන් පරීක්ෂා කරන්න.',
+  'Make it comfortable when I sleep': 'මම නිදන විට සුවපහසු කරන්න', 'Say how you want home to feel.': 'නිවස ඔබට දැනෙන්න ඕනෑ ආකාරය කියන්න.',
+  'Describe the outcome in your words. Concord will show the exact rule before anything is saved.': 'ඔබට අවශ්‍ය ප්‍රතිඵලය ඔබේ වචනවලින් කියන්න. සුරැකීමට පෙර Concord නිශ්චිත රීතිය පෙන්වයි.',
+  'Describe your scene': 'ඔබේ දර්ශනය විස්තර කරන්න', 'Understanding…': 'තේරුම් ගනිමින්…', 'Make the rule': 'රීතිය සාදන්න', 'Try': 'උත්සාහ කරන්න',
+  'Lock up when everyone leaves': 'සියලු දෙනා පිටවූ විට අගුළු දමන්න', 'Cool the bedroom before sleep': 'නින්දට පෙර නිදන කාමරය සිසිල් කරන්න',
+  'Welcome me home after sunset': 'හිරු බැස ගිය පසු මාව පිළිගන්න', 'Discard': 'ඉවත දමන්න', 'Check and save': 'පරීක්ෂා කර සුරකින්න',
+  'Preview': 'පෙරදසුන', 'Live state': 'සජීවී තත්ත්වය', 'Show live': 'සජීවී දසුන පෙන්වන්න', 'Preview rule': 'රීතිය පෙරදකින්න',
+  'No proposed changes.': 'යෝජිත වෙනස්කම් නැත.', 'No preview changes are applied.': 'පෙරදසුන් වෙනස්කම් ක්‍රියාත්මක කර නැත.', 'Proposed change': 'යෝජිත වෙනස', 'multiple rooms': 'කාමර කිහිපයක්',
+  'Scene creation method': 'දර්ශනය සෑදීමේ ක්‍රමය', 'Describe it': 'විස්තර කරන්න', 'Build manually': 'අතින් සාදන්න', 'Structured scene builder': 'ව්‍යුහගත දර්ශන සාදනය',
+  'Choose the trigger, optional condition and exact device action. You will review the same rule receipt before saving.': 'ආරම්භකය, අවශ්‍ය නම් කොන්දේසිය සහ නිශ්චිත උපාංග ක්‍රියාව තෝරන්න. සුරැකීමට පෙර එම රීති සාරාංශයම සමාලෝචනය කළ හැක.',
+  'Manual fallback': 'අතින් සැකසීම', 'Scene name': 'දර්ශනයේ නම', 'Trigger': 'ආරම්භකය', 'Trigger type': 'ආරම්භක වර්ගය', 'At a time': 'නිශ්චිත වේලාවක', 'When occupancy changes': 'පදිංචි තත්ත්වය වෙනස් වූ විට',
+  'When motion is detected': 'චලනය හඳුනාගත් විට', 'Time': 'වේලාව', 'Condition': 'කොන්දේසිය', 'Home is away': 'නිවසේ කිසිවෙකු නැත', 'Home is occupied': 'නිවසේ කෙනෙකු සිටී', 'Event room is hallway': 'සිදුවීමේ කාමරය මාර්ගයයි',
+  'Action': 'ක්‍රියාව', 'Device': 'උපාංගය', 'Brightness': 'දීප්තිය', 'Temperature': 'උෂ්ණත්වය', 'Lock state': 'අගුලේ තත්ත්වය', 'Open percent': 'විවෘත ප්‍රතිශතය',
+  'Review manual rule': 'අතින් සැකසූ රීතිය සමාලෝචනය කරන්න', 'No controllable devices are available.': 'පාලනය කළ හැකි උපාංග නොමැත.', 'Manual scene': 'අතින් සැකසූ දර්ශනය',
+  'A key that knows when to leave.': 'පිටවිය යුතු වේලාව දන්නා යතුරක්.', 'Create a pass for the right door and the right window. It expires without a reminder.': 'නිවැරදි දොරට සහ නිවැරදි කාල සීමාවට අවසර පතක් සාදන්න. එය ස්වයංක්‍රීයව කල් ඉකුත් වේ.',
+  'Who is it for?': 'මෙය කා සඳහාද?', 'visitor': 'අමුත්තා', 'delivery': 'බෙදාහැරීම', 'cleaner': 'පිරිසිදු කරන්නා',
+  'Name or service': 'නම හෝ සේවාව', 'Access window': 'ප්‍රවේශ කාලය', 'Next 1 hour': 'ඊළඟ පැය 1', 'Next 2 hours': 'ඊළඟ පැය 2',
+  'Next 4 hours': 'ඊළඟ පැය 4', 'Today': 'අද', 'Entry only': 'පිවිසුම පමණයි', 'Unlock apartment 401 · no device control': 'මහල් නිවාසය 401 අගුළු හරින්න · උපාංග පාලනය නැත',
+  'Creating…': 'සාදමින්…', 'Create pass': 'අවසර පත සාදන්න', 'Backup code': 'උපස්ථ කේතය', 'Copy backup code': 'උපස්ථ කේතය පිටපත් කරන්න',
+  'Copied': 'පිටපත් කළා', 'Copy': 'පිටපත් කරන්න', 'Valid from': 'වලංගු වන්නේ', 'Expired at': 'කල් ඉකුත් වූයේ', 'Valid until': 'වලංගු අවසානය',
+  'Demo pass · secure redemption pending backend integration': 'ආදර්ශ අවසර පත · ආරක්ෂිත සත්‍යාපනය සේවාදායකය විසින් සිදු කරයි',
+  'Your pass appears here': 'ඔබේ අවසර පත මෙහි දිස් වේ', 'The QR, readable backup code and expiry window will be ready to share.': 'QR කේතය, කියවිය හැකි උපස්ථ කේතය සහ කල් ඉකුත් වන කාලය බෙදාගැනීමට සූදානම් වේ.',
+  'Access schedule': 'ප්‍රවේශ කාලසටහන', 'One-time': 'එක් වරක්', 'Repeats weekly': 'සතිපතා නැවත සිදු වේ', 'Starts on': 'ආරම්භක දිනය', 'Ends on': 'අවසන් දිනය',
+  'Repeats on': 'නැවත සිදු වන දින', 'Window starts': 'කාල සීමාව ඇරඹෙන්නේ', 'Window ends': 'කාල සීමාව අවසන් වන්නේ', 'Start time': 'ආරම්භක වේලාව', 'End time': 'අවසන් වේලාව',
+  'mon': 'සඳු', 'tue': 'අඟ', 'wed': 'බදා', 'thu': 'බ්‍රහ', 'fri': 'සිකු', 'sat': 'සෙන', 'sun': 'ඉරි',
+  'Choose a valid date range, at least one day, and an end time after the start time.': 'වලංගු දින පරාසයක්, අවම වශයෙන් එක් දිනයක් සහ ආරම්භක වේලාවට පසු අවසන් වේලාවක් තෝරන්න.',
+  'View your time-limited Concord visitor pass.': 'කාල සීමා සහිත Concord අමුත්තන්ගේ අවසර පත බලන්න.', 'Share pass': 'අවසර පත බෙදාගන්න', 'Shared': 'බෙදාගත්තා', 'Copy pass link': 'අවසර පත් සබැඳිය පිටපත් කරන්න',
+  'The pass link could not be shared. Copy it and try again.': 'අවසර පත් සබැඳිය බෙදාගත නොහැකි විය. එය පිටපත් කර නැවත උත්සාහ කරන්න.',
+  'This demo pass is invalid or no longer available.': 'මෙම ආදර්ශ අවසර පත වලංගු නැත හෝ තවදුරටත් නොමැත.', 'The pass could not be loaded.': 'අවසර පත පූරණය කළ නොහැකි විය.',
+  'Loading visitor pass…': 'අමුත්තන්ගේ අවසර පත පූරණය වෙමින්…', 'Pass unavailable': 'අවසර පත නොමැත', 'QR code for {name}': '{name} සඳහා QR කේතය',
+  'Destination': 'ගමනාන්තය', 'Aster Tower · Apartment 401': 'Aster Tower · මහල් නිවාසය 401', 'to': 'සිට', 'Weekly schedule': 'සතිපතා කාලසටහන',
+  'This QR identifies the demo pass. The building backend validates access; the QR alone does not unlock a door.': 'මෙම QR කේතය ආදර්ශ අවසර පත හඳුනා ගනී. ගොඩනැගිල්ලේ සේවාදායකය ප්‍රවේශය සත්‍යාපනය කරයි; QR කේතය පමණක් දොරක් අගුළු හරින්නේ නැත.',
+  'pending': 'බලාපොරොත්තුවෙන්', 'active': 'සක්‍රිය', 'expired': 'කල් ඉකුත්',
+  'Aster Tower · Live overview': 'Aster Tower · සජීවී සාරාංශය', 'Good evening, front desk.': 'සුබ සැන්දෑවක්, පිළිගැනීමේ කවුළුව.',
+  'Three units need attention. Resident activity stays private.': 'ඒකක තුනකට අවධානය අවශ්‍යයි. නිවැසියන්ගේ ක්‍රියාකාරකම් පෞද්ගලිකව තබා ගනී.',
+  'New handover': 'නව භාරදීමක්', 'Device health': 'උපාංග තත්ත්වය', 'Need attention': 'අවධානය අවශ්‍ය', 'Energy today': 'අද බලශක්තිය',
+  '48 residences': 'නිවාස 48', 'all': 'සියල්ල', 'attention': 'අවධානය', 'anomaly': 'අසාමාන්‍ය', 'Unit': 'ඒකකය', 'Healthy': 'හොඳ තත්ත්වයේ',
+  'Energy anomaly': 'බලශක්ති අසාමාන්‍යතාව', 'Energy': 'බලශක්තිය', 'Entry lock offline': 'පිවිසුම් අගුල සම්බන්ධ නැත', 'All devices responding': 'සියලු උපාංග ප්‍රතිචාර දක්වයි',
+  'Energy anomaly since 14:20': '14:20 සිට බලශක්ති අසාමාන්‍යතාවක්', 'Smoke sensor battery': 'දුම් සංවේදක බැටරිය',
+  'Connecting to Apartment 401…': 'මහල් නිවාසය 401 සමඟ සම්බන්ධ වෙමින්…', 'Home engine offline': 'නිවාස එන්ජිම සම්බන්ධ නැත', 'Retry connection': 'නැවත සම්බන්ධ කරන්න',
+  'Home engine live': 'නිවාස එන්ජිම සජීවීයි', 'Reconnecting…': 'නැවත සම්බන්ධ වෙමින්…', 'Data may be stale': 'දත්ත පැරණි විය හැක', 'Engine offline': 'එන්ජිම සම්බන්ධ නැත',
+  'The last confirmed home state remains visible.': 'අවසන් වරට තහවුරු කළ නිවසේ තත්ත්වය තවමත් පෙන්වයි.', 'Retry now': 'දැන් නැවත උත්සාහ කරන්න',
+  'Emergency': 'හදිසි අවස්ථාව', 'Get help now': 'දැන් උදව් ගන්න', 'Demo view': 'ආදර්ශ දසුන', 'Dark mode': 'අඳුරු මාදිලිය', 'Light mode': 'දීප්තිමත් මාදිලිය',
+  'Use dark mode': 'අඳුරු මාදිලිය භාවිතා කරන්න', 'Use light mode': 'දීප්තිමත් මාදිලිය භාවිතා කරන්න', 'Open menu': 'මෙනුව විවෘත කරන්න', 'Primary navigation': 'ප්‍රධාන සංචාලනය', 'Mobile navigation': 'ජංගම සංචාලනය',
+  'Notifications': 'දැනුම්දීම්', 'Scene ready': 'දර්ශනය සූදානම්', 'Engine write failed': 'එන්ජිමට ලිවීම අසාර්ථකයි', 'Dismiss error': 'දෝෂය වසන්න',
+  'This scene needs another edit': 'මෙම දර්ශනය තවදුරටත් සංස්කරණය කළ යුතුයි', 'Conflict found by the engine': 'එන්ජිම ගැටුමක් සොයා ගත්තේය', 'No scene was saved': 'දර්ශනය සුරැකී නැත',
+  'Your edited scene': 'ඔබ සංස්කරණය කළ දර්ශනය', 'conflicts with': 'සමඟ ගැටේ', 'Existing rule': 'පවතින රීතිය', 'The engine kept the existing rule unchanged.': 'එන්ජිම පවතින රීතිය වෙනස් නොකර තබා ඇත.', 'Return to edit': 'සංස්කරණයට ආපසු යන්න',
+  'Help request sent': 'උදව් ඉල්ලීම යවා ඇත', 'Emergency help': 'හදිසි උදව්', 'Building response has been alerted.': 'ගොඩනැගිලි ප්‍රතිචාර කණ්ඩායම දැනුවත් කර ඇත.',
+  'Status': 'තත්ත්වය', 'Active': 'සක්‍රිය', 'Escalated to': 'යොමු කළේ', 'Operator desk': 'මෙහෙයුම් කවුළුව', 'Sent': 'යවා ඇත',
+  'Send an urgent help request?': 'හදිසි උදව් ඉල්ලීමක් යවන්නද?', 'This demo alerts the simulated building response desk. It does not contact emergency services.': 'මෙම ආදර්ශය ගොඩනැගිලි ප්‍රතිචාර කවුළුව දැනුවත් කරයි. එය හදිසි සේවා අමතන්නේ නැත.',
+  'Sending…': 'යවමින්…', 'Send help request now': 'දැන් උදව් ඉල්ලීම යවන්න', 'Cancel': 'අවලංගු කරන්න',
+  'Prepare unit handover': 'ඒකක භාරදීම සූදානම් කරන්න', 'Access begins with the lease and expires automatically at its end.': 'බදු කාලය ආරම්භ වන විට ප්‍රවේශය ඇරඹී එය අවසන් වන විට ස්වයංක්‍රීයව කල් ඉකුත් වේ.',
+  'Resident type': 'නිවැසි වර්ගය', 'Tenant': 'කුලී නිවැසියා', 'Owner': 'හිමිකරු', 'Resident name': 'නිවැසියාගේ නම', 'Lease begins': 'බදු කාලය ඇරඹෙන්නේ', 'Lease ends': 'බදු කාලය අවසන් වන්නේ',
+  'Resident controls': 'නිවැසි පාලන', 'Entry, climate, lights and curtains · no operator scope': 'පිවිසුම, වායු සමීකරණය, ආලෝක සහ තිර · මෙහෙයුම්කරුට පාලනය නැත',
+  'Activating…': 'සක්‍රිය කරමින්…', 'Activate at lease start': 'බදු ආරම්භයේදී සක්‍රිය කරන්න', 'Language': 'භාෂාව', 'English': 'ඉංග්‍රීසි', 'Spanish': 'ස්පාඤ්ඤ', 'Sinhala': 'සිංහල', 'Close dialog': 'සංවාද කවුළුව වසන්න',
+  'Profile': 'පැතිකඩ', 'Open profile': 'පැතිකඩ විවෘත කරන්න', 'Apartment 401 · Edit profile': 'මහල් නිවාසය 401 · පැතිකඩ සංස්කරණය',
+  'Your resident profile': 'ඔබේ නිවැසි පැතිකඩ', 'Keep the identity shown across your home controls current. Changes stay in this demo session.': 'නිවාස පාලනවල පෙන්වන අනන්‍යතාව යාවත්කාලීනව තබා ගන්න. වෙනස්කම් මෙම ආදර්ශ සැසිය තුළ පමණක් පවතී.',
+  'Profile picture': 'පැතිකඩ පින්තූරය', 'Replace picture': 'පින්තූරය මාරු කරන්න', 'Choose a picture': 'පින්තූරයක් තෝරන්න', 'JPG, PNG or WebP · up to 3 MB': 'JPG, PNG හෝ WebP · උපරිම 3 MB',
+  'Choose a JPG, PNG or WebP image under 3 MB.': '3 MBට අඩු JPG, PNG හෝ WebP පින්තූරයක් තෝරන්න.', 'That image could not be read. Choose another file.': 'එම පින්තූරය කියවිය නොහැකි විය. වෙනත් ගොනුවක් තෝරන්න.',
+  'Enter the resident name.': 'නිවැසියාගේ නම ඇතුළත් කරන්න.', 'Remove picture': 'පින්තූරය ඉවත් කරන්න', 'Profile saved': 'පැතිකඩ සුරැකිණි', 'Save profile': 'පැතිකඩ සුරකින්න',
+  'Alerts, explanations and emergency updates from the live home engine.': 'සජීවී නිවාස එන්ජිමෙන් ලැබෙන ඇඟවීම්, පැහැදිලි කිරීම් සහ හදිසි යාවත්කාලීන.', '{count} unread': 'නොකියවූ {count}',
+  'Loading notifications': 'දැනුම්දීම් පූරණය වෙමින්', 'You’re all caught up': 'සියල්ල යාවත්කාලීනයි', 'New WhyCards, alerts and SOS updates will appear here.': 'නව පැහැදිලි කිරීම්, ඇඟවීම් සහ SOS යාවත්කාලීන මෙහි දිස් වේ.',
+  'Emergency update': 'හදිසි යාවත්කාලීනය', 'Home explanation': 'නිවසේ පැහැදිලි කිරීම', 'Read': 'කියවා ඇත', 'Mark as read': 'කියවූ ලෙස සලකුණු කරන්න',
+};
+
 type I18nValue = { language: Language; setLanguage: (value: Language) => void; t: (message: string, values?: Values) => string; locale: string };
 const I18nContext = createContext<I18nValue | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(() => window.localStorage.getItem('concord-language') === 'es' ? 'es' : 'en');
+  const [language, setLanguageState] = useState<Language>(() => {
+    const saved = window.localStorage.getItem('concord-language');
+    return saved === 'es' || saved === 'si' ? saved : 'en';
+  });
   useEffect(() => { document.documentElement.lang = language; }, [language]);
   const value = useMemo<I18nValue>(() => ({
     language,
-    locale: language === 'es' ? 'es-ES' : 'en-US',
+    locale: language === 'es' ? 'es-ES' : language === 'si' ? 'si-LK' : 'en-US',
     setLanguage(next) { setLanguageState(next); window.localStorage.setItem('concord-language', next); document.documentElement.lang = next; },
     t(message, values = {}) {
-      const translated = language === 'es' ? es[message] ?? message : message;
+      const translated = language === 'es' ? es[message] ?? message : language === 'si' ? si[message] ?? message : message;
       return translated.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? `{${key}}`));
     },
   }), [language]);

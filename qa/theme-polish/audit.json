@@ -1,0 +1,19 @@
+{
+  "capturedAt": "2026-09-17T01:14:00Z",
+  "appUrl": "http://127.0.0.1:5192",
+  "engineUrl": "http://127.0.0.1:8787",
+  "theme": "dark",
+  "language": "si",
+  "viewports": {
+    "desktop": { "width": 1440, "height": 1000 },
+    "mobile": { "width": 390, "height": 844 }
+  },
+  "routes": ["home", "scenes", "access", "profile", "notifications", "operator", "developer", "visitor"],
+  "results": {
+    "documentHorizontalOverflow": false,
+    "whiteFallbackSurfaces": [],
+    "pageErrors": [],
+    "consoleErrors": [],
+    "sinhalaFontLoaded": true
+  }
+}

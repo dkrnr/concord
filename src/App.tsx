@@ -210,10 +210,10 @@ function conditionCopy(rule: Rule, t: (message: string) => string = (message) =>
   return rule.conditions.map((condition) => `${condition.field} ${condition.op} ${String(condition.value)}`).join(' · ');
 }
 
-function actionCopy(rule: Rule, devices: Device[]) {
+function actionCopy(rule: Rule, devices: Device[], t: (message: string, values?: Record<string, string | number>) => string = (message) => message) {
   return rule.actions.map((action) => {
-    const target = action.deviceId === 'all' ? `all ${action.deviceType} devices` : devices.find((device) => device.id === action.deviceId) ? deviceName(devices.find((device) => device.id === action.deviceId)!) : action.deviceId;
-    const values = Object.entries(action.set).map(([field, value]) => `${field} ${String(value)}`).join(', ');
+    const target = action.deviceId === 'all' ? t('All {type} devices', { type: t(action.deviceType) }) : devices.find((device) => device.id === action.deviceId) ? deviceName(devices.find((device) => device.id === action.deviceId)!, t) : action.deviceId;
+    const values = Object.entries(action.set).map(([field, value]) => `${t(field)} ${String(value)}`).join(', ');
     return `${target}: ${values}`;
   }).join(' · ');
 }
@@ -298,7 +298,7 @@ function ScenesView({ devices, onConflict, onSaved, onWriteError }: { devices: D
     setManualValue(target?.type === 'lock' ? 'true' : target?.type === 'ac' ? '23' : target?.type === 'curtain' ? '50' : '60');
   }
   const previewRoom = proposal ? (proposal.rule.actions[0]?.deviceId === 'all' ? 'all' : String(devices.find((device) => device.id === proposal.rule.actions[0]?.deviceId)?.state.room ?? 'all')) as Room : 'all';
-  const previewAction = proposal ? actionCopy(proposal.rule, devices) : t('No proposed changes.');
+  const previewAction = proposal ? actionCopy(proposal.rule, devices, t) : t('No proposed changes.');
   return <div className="scenes-view">
     <section className="scene-compose">
       <h1>{t('Say how you want home to feel.')}</h1><p>{t('Describe the outcome in your words. Concord will show the exact rule before anything is saved.')}</p>
@@ -623,13 +623,13 @@ function App() {
   if (loadError && devices.length === 0) return <div className="boot-screen boot-error" role="alert"><BrandMark /><strong>{t('Home engine offline')}</strong><span>{loadError}</span><button className="primary-button" onClick={() => setRetryKey((value) => value + 1)}>{t('Retry connection')}</button></div>;
   const connectionCopy: Record<ConnectionState, string> = { live: t('Home engine live'), reconnecting: t('Reconnecting…'), stale: t('Data may be stale'), offline: t('Engine offline') };
   return <div className={`app-shell ${role}`}>
-    <header className="mobile-header"><button className="brand-mobile" onClick={() => { setRoute(role === 'operator' ? 'building' : role === 'developer' ? 'developer' : 'home'); }}><BrandMark /><span>Concord</span></button><div><button className="notification-button" aria-label={t('Notifications')} onClick={() => { setRole('resident'); setRoute('notifications'); void refreshNotifications(); }}><BellRing />{notifications.some((item) => !item.read) && <span className="unread-badge">{Math.min(99, notifications.filter((item) => !item.read).length)}</span>}</button><button className="emergency-compact" onClick={() => setSosOpen(true)}><HeartPulse /> {t('Emergency')}</button><button className="icon-button" onClick={() => setMobileMenu((v) => !v)} aria-label={t('Open menu')}>{mobileMenu ? <X /> : <Menu />}</button></div></header>
+    <header className="mobile-header"><button className="brand-mobile" onClick={() => { setRoute(role === 'operator' ? 'building' : role === 'developer' ? 'developer' : 'home'); setMobileMenu(false); }}><BrandMark /><span>Concord</span></button><div><button className="notification-button" aria-label={t('Notifications')} onClick={() => { setRole('resident'); setRoute('notifications'); setMobileMenu(false); void refreshNotifications(); }}><BellRing />{notifications.some((item) => !item.read) && <span className="unread-badge">{Math.min(99, notifications.filter((item) => !item.read).length)}</span>}</button><button className="emergency-compact" onClick={() => setSosOpen(true)}><HeartPulse /> {t('Emergency')}</button><button className="icon-button" onClick={() => setMobileMenu((v) => !v)} aria-label={t('Open menu')}>{mobileMenu ? <X /> : <Menu />}</button></div></header>
     <aside className={`sidebar ${mobileMenu ? 'mobile-open' : ''}`}>
       <button className="brand" onClick={() => setRoute(role === 'operator' ? 'building' : role === 'developer' ? 'developer' : 'home')}><BrandMark /><span>Concord</span></button>
-      <button className="residence-chip" onClick={() => role === 'resident' && setRoute('profile')}><div className="residence-avatar">{role === 'resident' ? profile.photo ? <img src={profile.photo} alt="" /> : profile.name[0] : <Building2 />}</div><span><strong>{role === 'resident' ? profile.name : role === 'developer' ? t('Concord Portfolio') : 'Aster Tower'}</strong><small>{role === 'resident' ? t('Apartment 401 · Edit profile') : t(role === 'developer' ? 'Developer overview' : 'Building')}</small></span></button>
+      <button className="residence-chip" onClick={() => { if (role === 'resident') setRoute('profile'); setMobileMenu(false); }}><div className="residence-avatar">{role === 'resident' ? profile.photo ? <img src={profile.photo} alt="" /> : profile.name[0] : <Building2 />}</div><span><strong>{role === 'resident' ? profile.name : role === 'developer' ? t('Concord Portfolio') : 'Aster Tower'}</strong><small>{role === 'resident' ? t('Apartment 401 · Edit profile') : t(role === 'developer' ? 'Developer overview' : 'Building')}</small></span></button>
       <nav aria-label={t('Primary navigation')}>{role === 'resident' ? NAV.map(({ id, label, icon: Icon }) => <button key={id} className={route === id ? 'active' : ''} onClick={() => { setRoute(id); setMobileMenu(false); }}><Icon />{t(label)}</button>) : <button className="active"><LayoutGrid />{t(role === 'developer' ? 'Portfolio' : 'Building')}</button>}</nav>
       <div className="sidebar-spacer" />
-      <label className="language-switch"><Globe2 /><span className="sr-only">{t('Language')}</span><select value={language} onChange={(event) => setLanguage(event.target.value as Language)}><option value="en">{t('English')}</option><option value="es">{t('Spanish')}</option></select></label>
+      <label className="language-switch"><Globe2 /><span className="sr-only">{t('Language')}</span><select value={language} onChange={(event) => setLanguage(event.target.value as Language)}><option value="en">{t('English')}</option><option value="es">{t('Spanish')}</option><option value="si">{t('Sinhala')}</option></select></label>
       <button className="sidebar-utility" onClick={toggleTheme}>{theme === 'light' ? <Moon /> : <Sun />}<span>{t(theme === 'light' ? 'Dark mode' : 'Light mode')}</span></button>
       <button className="emergency-button" onClick={() => { setSosOpen(true); setMobileMenu(false); }}><HeartPulse /><span><strong>{t('Emergency')}</strong><small>{t('Get help now')}</small></span></button>
       <div className="role-switch"><span>{t('Demo view')}</span><div><button className={role === 'resident' ? 'selected' : ''} onClick={() => switchRole('resident')}>{t('Resident')}</button><button className={role === 'operator' ? 'selected' : ''} onClick={() => switchRole('operator')}>{t('Operator')}</button><button className={role === 'developer' ? 'selected' : ''} onClick={() => switchRole('developer')}>{t('Developer')}</button></div></div>
@@ -658,7 +658,7 @@ function App() {
 
 function ConflictDialog({ value, onClose }: { value: { rule: Rule; conflict: Conflict } | null; onClose: () => void }) {
   const { t } = useI18n();
-  return <Dialog open={Boolean(value)} title={t('This scene needs another edit')} onClose={onClose} tone="danger">{value && <div className="conflict-content"><div className="safety-lock"><AlertTriangle /><span><strong>{t('Conflict found by the engine')}</strong><small>{t('No scene was saved')}</small></span></div><p>{value.conflict.reason}</p><div className="rule-compare"><div><span>{t('Your edited scene')}</span><strong>{value.rule.name}</strong><small>{actionCopy(value.rule, [])}</small></div><div className="conflict-vs">{t('conflicts with')}</div><div className="protected"><span>{t('Existing rule')}</span><strong>{value.conflict.ruleB}</strong><small>{t('The engine kept the existing rule unchanged.')}</small></div></div><div className="dialog-actions"><button className="primary-button" onClick={onClose}>{t('Return to edit')}</button></div></div>}</Dialog>;
+  return <Dialog open={Boolean(value)} title={t('This scene needs another edit')} onClose={onClose} tone="danger">{value && <div className="conflict-content"><div className="safety-lock"><AlertTriangle /><span><strong>{t('Conflict found by the engine')}</strong><small>{t('No scene was saved')}</small></span></div><p>{value.conflict.reason}</p><div className="rule-compare"><div><span>{t('Your edited scene')}</span><strong>{value.rule.name}</strong><small>{actionCopy(value.rule, [], t)}</small></div><div className="conflict-vs">{t('conflicts with')}</div><div className="protected"><span>{t('Existing rule')}</span><strong>{value.conflict.ruleB}</strong><small>{t('The engine kept the existing rule unchanged.')}</small></div></div><div className="dialog-actions"><button className="primary-button" onClick={onClose}>{t('Return to edit')}</button></div></div>}</Dialog>;
 }
 
 function EmergencyDialog({ open, sos, onClose, onTrigger }: { open: boolean; sos: SosEvent | null; onClose: () => void; onTrigger: () => Promise<void> }) {

@@ -350,3 +350,32 @@ Verification against `http://127.0.0.1:8790` and the production preview:
 Demo limits remain explicit: uploaded profile images are local memory only; visitor links use
 demo grant identifiers/backup codes; the engine validates redemption and the QR alone never
 unlocks a door. Native sharing depends on browser support and otherwise copies the pass URL.
+
+## Theme and Sinhala polish — 2026-09-17
+
+This pass preserves the existing information architecture and automation behavior while
+fixing finish issues across every route:
+
+- Dark surfaces now use semantic text, control, border and soft-surface tokens. Primary and
+  danger actions keep accessible foregrounds; QR codes retain their intentional white scan
+  backing. Page margins and top offsets are consistent across resident, operator and developer
+  views.
+- Sinhala (`si-LK`) joins English and Spanish in the persisted language switch. All UI-owned
+  strings, generated rule summaries and inventory labels have Sinhala copy; engine factual data
+  remains unchanged. Local Noto Sans Sinhala 400/600/700 fonts prevent fallback shaping and
+  language-specific line-height, wrapping and responsive grid rules keep labels aligned.
+- The mobile drawer closes after profile, notification and role navigation. The developer table
+  now scrolls within its own region instead of widening the document.
+
+Evidence:
+
+- `qa/theme-polish/audit.json` and its 16 route screenshots cover dark Sinhala at 1440×1000 and
+  390×844. Both viewports report the Sinhala font loaded, no white fallback surfaces, no document
+  overflow and no console/page errors.
+- `qa/screenshots.json` and the refreshed desktop/laptop/mobile images cover the production light
+  theme with no horizontal overflow, resource failures, broken images or browser errors.
+- `qa/motion-polish/motion.json` covers WebGL temporal states, reduced motion and the forced SVG
+  fallback after the styling changes.
+- Live HTTP checks against `127.0.0.1:8787` resolved “cool the bedroom to 23 at 10pm” to
+  `dev_ac_bedroom`; missing kitchen lights and vague input returned HTTP 422
+  `NEEDS_CLARIFICATION`. Notification and portfolio reads returned HTTP 200.

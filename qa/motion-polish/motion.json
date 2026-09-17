@@ -1,0 +1,462 @@
+{
+  "url": "http://127.0.0.1:5194/",
+  "mode": "motion",
+  "capturedAt": "2026-09-17T01:16:15.843Z",
+  "motionApproval": "Not assigned. Inspect frames/video and add site-specific assertions.",
+  "cases": [
+    {
+      "viewport": "desktop",
+      "errors": [],
+      "resourceFailures": [],
+      "snapshots": [
+        {
+          "label": "initial",
+          "scene": null,
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 0,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "time-0400",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "time-1400",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "pointer-left",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "pointer-right",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "scroll-mid",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
+          },
+          "hookError": null,
+          "scrollY": 311,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "scroll-end",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
+          },
+          "hookError": null,
+          "scrollY": 656,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "scroll-reverse",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
+          },
+          "hookError": null,
+          "scrollY": 138,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "return-top",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        }
+      ],
+      "unchecked": [
+        "Site-specific click/drag/touch gestures",
+        "Keyboard and pause controls",
+        "Real-device GPU performance",
+        "Visual quality and continuous playback feel"
+      ],
+      "liveRenderer": "Reported by page; inspect captured output to verify.",
+      "video": "page@1ad442857a8bd0fa62c65a1da6b53ba1.webm"
+    },
+    {
+      "viewport": "mobile",
+      "errors": [],
+      "resourceFailures": [],
+      "snapshots": [
+        {
+          "label": "initial",
+          "scene": null,
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 0,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "time-0400",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "time-1400",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "scroll-mid",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
+          },
+          "hookError": null,
+          "scrollY": 363,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "scroll-end",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
+          },
+          "hookError": null,
+          "scrollY": 766,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "scroll-reverse",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
+          },
+          "hookError": null,
+          "scrollY": 161,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        },
+        {
+          "label": "return-top",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        }
+      ],
+      "unchecked": [
+        "Site-specific click/drag/touch gestures",
+        "Keyboard and pause controls",
+        "Real-device GPU performance",
+        "Visual quality and continuous playback feel"
+      ],
+      "liveRenderer": "Reported by page; inspect captured output to verify.",
+      "video": "page@32b845f1988b50206852be398df66b98.webm"
+    },
+    {
+      "viewport": "desktop",
+      "errors": [],
+      "resourceFailures": [],
+      "snapshots": [
+        {
+          "label": "reduced",
+          "scene": {
+            "renderer": "webgl",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": true,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": true,
+          "horizontalOverflow": false,
+          "canvasCount": 1,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        }
+      ],
+      "variant": "reduced",
+      "variantVerification": "Requires visual and site-specific behavioral inspection."
+    },
+    {
+      "viewport": "desktop",
+      "errors": [],
+      "resourceFailures": [],
+      "snapshots": [
+        {
+          "label": "fallback",
+          "scene": {
+            "renderer": "fallback",
+            "room": "all",
+            "preview": false,
+            "reducedMotion": false,
+            "devices": {
+              "lightOn": true,
+              "brightness": 32,
+              "curtainOpen": 18,
+              "acOn": true,
+              "temperature": 24,
+              "locked": true
+            }
+          },
+          "hookError": null,
+          "scrollY": 0,
+          "reducedMotion": false,
+          "horizontalOverflow": false,
+          "canvasCount": 0,
+          "webgpuAPIExposed": true,
+          "brokenImages": []
+        }
+      ],
+      "variant": "fallback",
+      "variantVerification": "Requires visual and site-specific behavioral inspection."
+    }
+  ]
+}
