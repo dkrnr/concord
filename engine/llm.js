@@ -1,7 +1,18 @@
-// Sentence -> Rule via local Qwen (Ollama). Config flag swaps in a hosted model later.
-const MODEL_PROVIDER = process.env.MODEL_PROVIDER || 'ollama'; // 'ollama' | 'hosted'
-const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen3.5:4b';
+import 'dotenv/config';
+
+// OpenRouter's free tier only. OpenRouter handles model failover when the
+// primary model is unavailable or rate-limited.
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const FREE_MODELS = [
+  'qwen/qwen3.8-27b:free',
+  'qwen/qwen3-4b:free',
+  'meta-llama/llama-3.2-3b-instruct:free',
+  'openrouter/free',
+];
+const OPENROUTER_MODEL = FREE_MODELS.includes(process.env.OPENROUTER_MODEL)
+  ? process.env.OPENROUTER_MODEL
+  : FREE_MODELS[0];
+const OPENROUTER_FALLBACKS = FREE_MODELS.filter((model) => model !== OPENROUTER_MODEL);
 
 const SYSTEM_PROMPT = `You convert one plain-language home-automation sentence into ONE JSON Rule object.
 /no_think
@@ -68,25 +79,40 @@ export function validateRuleShape(obj) {
   return null;
 }
 
-async function callOllama(sentence, inventory, correction) {
+async function callOpenRouter(sentence, inventory, correction) {
+  if (!process.env.OPENROUTER_KEY) {
+    throw new Error('OPENROUTER_KEY is not configured');
+  }
+
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
     { role: 'user', content: `Current apartment inventory:\n${inventory}\n\nSentence: ${sentence}` },
   ];
   if (correction) messages.push({ role: 'user', content: correction });
 
-  const res = await fetch(`${OLLAMA_URL}/api/chat`, {
+  const res = await fetch(OPENROUTER_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: OLLAMA_MODEL, messages, stream: false, think: false, format: 'json' }),
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${process.env.OPENROUTER_KEY}`,
+      'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'http://localhost',
+      'X-Title': process.env.OPENROUTER_APP_NAME || 'Concord Smart Living',
+    },
+    body: JSON.stringify({
+      model: OPENROUTER_MODEL,
+      models: OPENROUTER_FALLBACKS,
+      messages,
+      temperature: 0.1,
+      stream: false,
+    }),
   });
-  if (!res.ok) throw new Error(`ollama http ${res.status}`);
+  if (!res.ok) {
+    let detail = '';
+    try { detail = (await res.json()).error?.message || ''; } catch {}
+    throw new Error(`OpenRouter http ${res.status}${detail ? `: ${detail}` : ''}`);
+  }
   const data = await res.json();
-  return data.message?.content ?? '';
-}
-
-async function callHosted() {
-  throw new Error('hosted model not configured: set MODEL_PROVIDER=hosted and implement callHosted()');
+  return data.choices?.[0]?.message?.content ?? '';
 }
 
 const ROOM_ALIASES = new Map([
@@ -185,7 +211,7 @@ export async function sentenceToRule(sentence, devices) {
   const targetProblem = validateSentenceTargets(sentence, devices);
   if (targetProblem) return { error: targetProblem };
 
-  const call = MODEL_PROVIDER === 'hosted' ? callHosted : callOllama;
+  const call = callOpenRouter;
   const inventory = inventoryForPrompt(devices);
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
