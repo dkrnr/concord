@@ -1,0 +1,19 @@
+{
+  "rewrites": [
+    { "source": "/fetchDevices", "destination": "/api/fetchDevices" },
+    { "source": "/fetchRules", "destination": "/api/fetchRules" },
+    { "source": "/fetchGrants", "destination": "/api/fetchGrants" },
+    { "source": "/commandDevice", "destination": "/api/commandDevice" },
+    { "source": "/approveWhyCard", "destination": "/api/approveWhyCard" },
+    { "source": "/dismissWhyCard", "destination": "/api/dismissWhyCard" },
+    { "source": "/pollFeed", "destination": "/api/pollFeed" },
+    { "source": "/submitSentence", "destination": "/api/submitSentence" },
+    { "source": "/saveRule", "destination": "/api/saveRule" },
+    { "source": "/postWhyOverride", "destination": "/api/postWhyOverride" },
+    { "source": "/createGrant", "destination": "/api/createGrant" },
+    { "source": "/triggerSos", "destination": "/api/triggerSos" },
+    { "source": "/fetchNotifications", "destination": "/api/fetchNotifications" },
+    { "source": "/markNotificationRead", "destination": "/api/markNotificationRead" },
+    { "source": "/fetchPortfolio", "destination": "/api/fetchPortfolio" }
+  ]
+}

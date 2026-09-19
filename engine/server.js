@@ -413,9 +413,12 @@ const routes = {
   },
 };
 
-const server = createServer(async (req, res) => {
+export async function handleRequest(req, res) {
   if (req.method === 'OPTIONS') { send(res, 204, {}); return; }
-  const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
+  const requestPathname = new URL(req.url ?? '/', 'http://localhost').pathname;
+  const pathname = requestPathname.startsWith('/api/')
+    ? requestPathname.slice('/api'.length)
+    : requestPathname;
   const handler = routes[pathname];
   if (!handler && (req.method === 'GET' || req.method === 'HEAD')) {
     try { await serveApp(req, res, pathname); }
@@ -430,9 +433,13 @@ const server = createServer(async (req, res) => {
   } catch (err) {
     adapterError(res, 'VALIDATION', 'Malformed JSON body.', 400);
   }
-});
+}
 
-server.listen(Number(PORT), HOST, () => {
-  console.log(`Concord presentation server listening on http://${HOST}:${PORT}`);
-  console.log(`Apartment: ${APARTMENT} | seed events queued: ${store.eventQueue.length}`);
-});
+const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) {
+  const server = createServer(handleRequest);
+  server.listen(Number(PORT), HOST, () => {
+    console.log(`Concord presentation server listening on http://${HOST}:${PORT}`);
+    console.log(`Apartment: ${APARTMENT} | seed events queued: ${store.eventQueue.length}`);
+  });
+}
