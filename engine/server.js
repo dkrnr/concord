@@ -10,7 +10,8 @@ import { validateGrant, isGrantActiveAt } from './grants.js';
 
 const FEED_BATCH_LIMIT = 100;
 
-const PORT = process.env.PORT || 8787;
+const PORT = process.env.ENGINE_PORT || process.env.PORT || 9000;
+const HOST = process.env.ENGINE_HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 const DIST_DIR = resolve(fileURLToPath(new URL('../dist/', import.meta.url)));
 const MIME_TYPES = {
   '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8',
@@ -431,7 +432,7 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`Concord presentation server listening on http://localhost:${PORT}`);
+server.listen(Number(PORT), HOST, () => {
+  console.log(`Concord presentation server listening on http://${HOST}:${PORT}`);
   console.log(`Apartment: ${APARTMENT} | seed events queued: ${store.eventQueue.length}`);
 });
